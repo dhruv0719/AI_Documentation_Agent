@@ -27,7 +27,10 @@ def scan_project(project_path: str, ignore_dirs: List[str] = None) -> List[str]:
     for file in project_path.glob('**/*.py'):
         relative_path = str(file.relative_to(project_path))
 
-        if not any(ignore_dir in relative_path for ignore_dir in ignore_dirs):
+        # if not any(ignore_dir in relative_path for ignore_dir in ignore_dirs):
+        #     python_files.append(relative_path)
+        """The Problem with the above code is that it will ignore any file that has the ignore_dir in its path, even if it's not in the ignore_dir. For example, if you have a file called "venv.py" it will be ignored because it contains "venv" in its name. To fix this, we can check if the file is actually in one of the ignore_dirs."""
+        if not any(part in ignore_dirs for part in file.relative_to(project_path).parts):
             python_files.append(relative_path)
         
     return python_files
