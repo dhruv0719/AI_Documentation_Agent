@@ -6,7 +6,7 @@ from typing import Optional
 from scanner import scan_project
 from models import ParsedFile, ClassInfo, FunctionInfo
 
-def parse_file(file_path: str, project_root: Optional[str] = None) -> ParsedFile:
+def parse_file(file_path: str, project_root: Optional[str] = None) -> Optional[ParsedFile]:
     """Parse a Python file and extract structured information."""
     
     # Initialize data structures
@@ -14,8 +14,11 @@ def parse_file(file_path: str, project_root: Optional[str] = None) -> ParsedFile
     classes = []
     functions = []
 
-    # Build full path
-    full_path = Path(project_root) / file_path
+    # Build full 
+    if project_root is None:
+        full_path = Path(file_path)
+    else:
+        full_path = Path(project_root) / file_path
 
     try:
         # Read and parse
