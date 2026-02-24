@@ -158,10 +158,8 @@ Respond with ONLY the JSON object, nothing else."""
         """
         num_classes = len(parsed_file.classes)
         num_functions = len(parsed_file.functions)
-        num_methods = sum(len(cls.methods) for cls in parsed_file.classes)
 
-        total_items = num_classes + num_functions + num_methods
-
+        total_items = num_classes + num_functions
         if total_items <= 5:
             return self.SMALL_MODEL
         
