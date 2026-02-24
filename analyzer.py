@@ -5,6 +5,8 @@ import json
 from groq import Groq
 from typing import List
 from models import ParsedFile, ModuleSummary, ProjectAnalysis
+from parser import parse_file
+from scanner import scan_project
 
 class CodeAnalyzer:
     def __init__(self, api_key: str = None):
@@ -34,6 +36,7 @@ class CodeAnalyzer:
 
         prompt = self._build_module_prompt(parsed_file)
         response = self._call_llm(prompt, model=model)
+        # print(f"LLM response for {parsed_file.file_path}:\n{response}\n")
 
         # Parse response into ModuleSummary
         return self._parse_module_response(response, parsed_file)
@@ -128,7 +131,20 @@ Respond with ONLY the JSON object, nothing else."""
             A ModuleSummary object with the extracted insights
         """
         try:
-            data = json.loads(response)
+            # Clean response - remove <think> tags and markdown code blocks
+            cleaned = response.strip()
+
+            # Remove <think>...</think> blocks
+            if "<think>" in cleaned:
+                cleaned = cleaned.split("</think>")[-1].strip()
+
+            # Remove markdown code fences if present
+            if cleaned.startswith("```json"):
+                cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+            elif cleaned.startswith("```"):
+                cleaned = cleaned.replace("```", "").strip()
+            
+            data = json.loads(cleaned)
             return ModuleSummary(
                 file_path=parsed_file.file_path,
                 purpose=data.get("purpose", "N/A"),
@@ -168,3 +184,36 @@ Respond with ONLY the JSON object, nothing else."""
         
         else:
             return self.LARGE_MODEL
+
+if __name__ == "__main__":
+    project_root = r"D:\AI_Documentation_Agent"
+    files = scan_project(project_root, ignore_dirs=["venv", ".venv", "__pycache__"])
+    
+    print(f"Found {len(files)} Python files\n")
+    
+    analyzer = CodeAnalyzer()
+    all_summaries = []
+    
+    # Loop through ALL files
+    for file_path in files:
+        parsed = parse_file(file_path, project_root)
+        if parsed:
+            summary = analyzer.analyze_module(parsed)
+            all_summaries.append(summary)
+            
+            # Print each summary
+            print("\n" + "="*60)
+            print(f"Analysis of {summary.file_path}")
+            print("="*60)
+            print(f"\nPurpose: {summary.purpose}")
+            print(f"\nResponsibilities:")
+            for resp in summary.responsibilities:
+                print(f"  - {resp}")
+            print(f"\nKey Components:")
+            for comp in summary.key_components:
+                print(f"  - {comp}")
+            print("\n")
+    
+    print(f"\n{'='*60}")
+    print(f"COMPLETED: Analyzed {len(all_summaries)} files")
+    print(f"{'='*60}")
