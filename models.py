@@ -1,5 +1,5 @@
 # models.py
-"""This module defines data models for representing parsed information from Python files, including functions, classes, and modules."""
+"""This module defines data models for representing parsed information from Python files, including functions, classes, and modules. It also includes models for summarizing module and project-level insights after analysis."""
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -23,3 +23,21 @@ class ParsedFile:
     imports: List[str]
     classes: List[ClassInfo]
     functions: List[FunctionInfo]
+
+@dataclass
+class ModuleSummary:
+    """Summary of a single module after LLM analysis."""
+    file_path: str
+    purpose: str  # What does this module do?
+    responsibilities: List[str]  # Main responsibilities
+    key_components: List[str]  # Important classes/functions
+    dependencies: List[str]  # What it imports (from ParsedFile)
+
+@dataclass 
+class ProjectAnalysis:
+    """High-level project understanding after synthesis."""
+    project_purpose: str
+    architecture_overview: str
+    entry_points: List[str]
+    module_relationships: str  # How modules connect
+    design_patterns: List[str]
