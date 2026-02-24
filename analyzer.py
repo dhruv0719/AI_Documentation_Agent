@@ -48,14 +48,47 @@ class CodeAnalyzer:
         Returns:
             A string prompt to send to the LLM
         """
-        prompt = f"""
-You are an expert software engineer analyzing a Python module. Here is the information about the module:
-- File path: {parsed_file.file_path}
-- Module docstring: {parsed_file.module_docstring}
-- Imports: {', '.join(parsed_file.imports)}
-- Classes: {', '.join(cls.name for cls in parsed_file.classes)}
-- Functions: {', '.join(func.name for func in parsed_file.functions)}
-"""
+        # Build detailed context
+        classes_info = "\n".join([
+            f" -{cls.name}: {len(cls.methods)} methods" 
+            for cls in parsed_file.classes
+        ])
+
+        functions_info = "\n".join([
+            f" -{func.name}({', '.join(func.params)})" 
+            for func in parsed_file.functions
+        ])
+
+        prompt = f"""You are a code analysis expert. Analyze this Python module and provide insights.
+
+FILE: {parsed_file.file_path}
+
+MODULE DOCSTRING:
+{parsed_file.module_docstring or "None"}
+
+IMPORTS:
+{', '.join(parsed_file.imports) if parsed_file.imports else "None"}
+
+CLASSES ({len(parsed_file.classes)}):
+{classes_info if classes_info else "None"}
+
+FUNCTIONS ({len(parsed_file.functions)}):
+{functions_info if functions_info else "None"}
+
+Analyze this module and respond with ONLY a JSON object (no markdown, no explanations) in this exact format:
+{{
+  "purpose": "Brief 1-2 sentence explanation of what this module does",
+  "responsibilities": ["responsibility 1", "responsibility 2", "responsibility 3"],
+  "key_components": ["component 1", "component 2"]
+}}
+
+Remember:
+- "purpose": High-level what and why
+- "responsibilities": List of 2-4 main tasks this module handles
+- "key_components": List of 2-4 most important classes/functions
+
+Respond with ONLY the JSON object, nothing else."""
+    
         return prompt
     
     def _call_llm(self, prompt: str, model: str) -> str:
@@ -72,14 +105,46 @@ You are an expert software engineer analyzing a Python module. Here is the infor
         try:
             response = self.client.chat.completions.create(
                 model=model,
-                prompt=prompt,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
                 max_tokens=2500,
                 temperature=0.2
             )
-            return response.text
+            return response.choices[0].message.content
         except Exception as e:
             print(f"Error calling LLM: {e}")
             return ""
+
+    def _parse_module_response(self, response: str, parsed_file: ParsedFile) -> ModuleSummary:
+        """
+        Parse the LLM response into a ModuleSummary object.
+        
+        Args:
+            response: The raw response from the LLM
+            parsed_file: The original parsed file information for reference
+            
+        Returns:
+            A ModuleSummary object with the extracted insights
+        """
+        try:
+            data = json.loads(response)
+            return ModuleSummary(
+                file_path=parsed_file.file_path,
+                purpose=data.get("purpose", "N/A"),
+                responsibilities=data.get("responsibilities", []),
+                key_components=data.get("key_components", []),
+                dependencies=parsed_file.imports
+            )
+        except json.JSONDecodeError:
+            print("Failed to parse LLM response as JSON. Returning empty summary.")
+            return ModuleSummary(
+                file_path=parsed_file.file_path,
+                purpose="N/A",
+                responsibilities=[],
+                key_components=[],
+                dependencies=parsed_file.imports
+            )
 
     def _select_model_for_file(self, parsed_file: ParsedFile) -> str:
         """
