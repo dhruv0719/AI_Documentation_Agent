@@ -40,6 +40,99 @@ class CodeAnalyzer:
 
         # Parse response into ModuleSummary
         return self._parse_module_response(response, parsed_file)
+
+    def synthesize_project(self, module_summaries: List[ModuleSummary], project_path: str) -> ProjectAnalysis:
+        """
+        Synthesize project-level understanding from module summaries.
+    
+        Args:
+            module_summaries: List of all module summaries
+            project_path: Root path of the project
+
+        Returns:
+            ProjectAnalysis with high-level insights
+        """
+        print(f"\n{'='*60}")
+        print(f"SYNTHESIZING PROJECT OVERVIEW")
+        print(f"Using model: {self.LARGE_MODEL}")
+        print(f"{'='*60}")
+
+        prompt = self._build_synsthesize_prompt(module_summaries, project_path)
+        response = self._call_llm(prompt, model=self.LARGE_MODEL)
+
+        return self._parse_synthesis_response(response)
+
+    
+    def _build_synsthesize_prompt(self, module_summaries: List[ModuleSummary], project_path: str) -> str:
+        """Build a prompt to synthesize project-level insights."""
+
+        modules_info = "\n\n".join([
+            f"**{summary.file_path}**\n"
+            f"  Purpose: {summary.purpose}\n"
+            f"  Responsibilities: {', '.join(summary.responsibilities)}\n"
+            f"  Key Components: {', '.join(summary.key_components)}"
+            for summary in module_summaries
+        ])
+
+        prompt = f"""You are a senior software architect analyzing a Python project. Based on these module summaries, provide a comprehensive project overview.
+PROJECT PATH: {project_path}
+
+MODULE SUMMARIES:
+{modules_info}
+
+Analyze how these modules work together and respond with ONLY a JSON object in this exact format:
+{{
+  "project_purpose": "1-2 sentences explaining what this entire project does and why it exists",
+  "architecture_overview": "2-3 sentences describing the overall architecture and how modules interact",
+  "entry_points": ["main.py", "other_entry.py"],
+  "module_relationships": "2-3 sentences explaining how modules depend on and interact with each other",
+  "design_patterns": ["pattern1", "pattern2"]
+}}
+
+Guidelines:
+- project_purpose: The "what" and "why" of the whole project
+- architecture_overview: High-level structure (e.g., "CLI tool with parser→analyzer→generator pipeline")
+- entry_points: Which files can be run directly (look for files that orchestrate or have main entry)
+- module_relationships: How data flows between modules
+- design_patterns: Any clear patterns used (e.g., "Factory", "Strategy", "Pipeline", "Modular design")
+
+IMPORTANT: Respond with ONLY the JSON object. No markdown, no explanations, no code fences."""
+    
+        return prompt
+    
+    def _parse_synthesis_response(self, response: str) -> ProjectAnalysis:
+        """Parse the LLM response from project synthesis."""
+        try:
+            # Clean response (same as module parsing)
+            cleaned = response.strip()
+            
+            if "<think>" in cleaned:
+                cleaned = cleaned.split("</think>")[-1].strip()
+            
+            if cleaned.startswith("```json"):
+                cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+            elif cleaned.startswith("```"):
+                cleaned = cleaned.replace("```", "").strip()
+            
+            data = json.loads(cleaned)
+            
+            return ProjectAnalysis(
+                project_purpose=data.get("project_purpose", "N/A"),
+                architecture_overview=data.get("architecture_overview", "N/A"),
+                entry_points=data.get("entry_points", []),
+                module_relationships=data.get("module_relationships", "N/A"),
+                design_patterns=data.get("design_patterns", [])
+            )
+    
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse synthesis response: {e}")
+            return ProjectAnalysis(
+                project_purpose="Parse error",
+                architecture_overview="Parse error",
+                entry_points=[],
+                module_relationships="Parse error",
+                design_patterns=[]
+            )
     
     def _build_module_prompt(self, parsed_file: ParsedFile) -> str:
         """
@@ -186,7 +279,7 @@ Respond with ONLY the JSON object, nothing else."""
             return self.LARGE_MODEL
 
 if __name__ == "__main__":
-    project_root = r"D:\AI_Documentation_Agent"
+    project_root = r"D:\Intership\board size calc\board_size_calc_v2"
     files = scan_project(project_root, ignore_dirs=["venv", ".venv", "__pycache__"])
     
     print(f"Found {len(files)} Python files\n")
@@ -217,3 +310,15 @@ if __name__ == "__main__":
     print(f"\n{'='*60}")
     print(f"COMPLETED: Analyzed {len(all_summaries)} files")
     print(f"{'='*60}")
+
+    # After analyzing all modules, synthesize project
+    project_analysis = analyzer.synthesize_project(all_summaries, project_root)
+
+    print(f"\n{'='*60}")
+    print("PROJECT ANALYSIS")
+    print(f"{'='*60}")
+    print(f"\nPurpose: {project_analysis.project_purpose}")
+    print(f"\nArchitecture: {project_analysis.architecture_overview}")
+    print(f"\nEntry Points: {', '.join(project_analysis.entry_points)}")
+    print(f"\nModule Relationships: {project_analysis.module_relationships}")
+    print(f"\nDesign Patterns: {', '.join(project_analysis.design_patterns)}")
