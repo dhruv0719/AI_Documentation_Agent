@@ -1,110 +1,121 @@
 # main.py
+"""Main orchestrator for the Code Documentation Agent."""
 from typing import List
+from pathlib import Path
 from models import ParsedFile
 from parser import parse_file
 from scanner import scan_project
+from analyzer import CodeAnalyzer
+from generator import DocumentationGenerator
 
-def analyze_project(project_path: str) -> List[ParsedFile]:
+def generate_documentation(project_path: str, project_name: str = None):
     """
-    Scan and parse all Python
-
+    Complete pipeline: Scan → Parse → Analyze → Generate Docs
+    
     Args:
         project_path: Path to the project root
-    
-    Returns:
-        List of successfully parsed files
+        project_name: Name of the project (uses folder name if not provided)
     """
-    print(f"Analyzing project: {project_path}\n")
-
-    # Scan for Python files
-    python_file = scan_project(
+    # Determine project name
+    if project_name is None:
+        project_name = Path(project_path).name
+    
+    print(f"\n{'='*60}")
+    print(f"CODE DOCUMENTATION AGENT")
+    print(f"{'='*60}")
+    print(f"Project: {project_name}")
+    print(f"Path: {project_path}\n")
+    
+    # ===== PHASE 1: SCANNING =====
+    print(f"{'='*60}")
+    print("PHASE 1: SCANNING PROJECT")
+    print(f"{'='*60}\n")
+    
+    python_files = scan_project(
         project_path, 
         ignore_dirs=["venv", ".git", "node_modules", "__pycache__", ".venv", "dist", "build", ".pytest_cache"]
     )
-
-    print(f"Found {len(python_file)} Python files\n")
+    print(f"✓ Found {len(python_files)} Python files\n")
     
-    # Parse each file
+    # ===== PHASE 2: PARSING =====
+    print(f"{'='*60}")
+    print("PHASE 2: PARSING FILES")
+    print(f"{'='*60}\n")
+    
     parsed_files = []
     failed_files = []
-
-    for file in python_file:
-        parsed = parse_file(file, project_root=project_path)
-        if parsed: # Only append if parsing was successful
+    
+    for file_path in python_files:
+        parsed = parse_file(file_path, project_root=project_path)
+        if parsed:
             parsed_files.append(parsed)
         else:
-            failed_files.append(file)
-
-    # Summary
-    print(f"\n{'='*60}")
-    print(f"PARSING COMPLETE")
-    print(f"\n{'='*60}")
-    print(f"Successfully parsed: {len(parsed_files)} files")
-    print(f"Failed to parse: {len(failed_files)} files")
-
+            failed_files.append(file_path)
+    
+    print(f"✓ Successfully parsed: {len(parsed_files)} files")
     if failed_files:
-        print("\nFailed files:")
+        print(f"✗ Failed to parse: {len(failed_files)} files")
         for f in failed_files:
             print(f"  - {f}")
-
-    # Calculate statistics
-    total_classes = sum(len(pf.classes) for pf in parsed_files)
-    total_functions = sum(len(pf.functions) for pf in parsed_files)
-    total_imports = sum(len(pf.imports) for pf in parsed_files)
-
-    print(f"\n{'='*60}")
-    print(f"PROJECT STATISTICS")
+    print()
+    
+    # ===== PHASE 3: MODULE ANALYSIS =====
     print(f"{'='*60}")
-    print(f"Total classes: {total_classes}")
-    print(f"Total functions: {total_functions}")
-    print(f"Total imports: {total_imports}")
+    print("PHASE 3: ANALYZING MODULES (LLM)")
+    print(f"{'='*60}\n")
     
-    return parsed_files
-
-def print_parsed_file_details(parsed_file: ParsedFile):
-    """Print detailed information about a parsed file."""
-    print(f"\n{'='*60}")
-    print(f"FILE: {parsed_file.file_path}")
+    analyzer = CodeAnalyzer()
+    module_summaries = []
+    
+    for parsed_file in parsed_files:
+        summary = analyzer.analyze_module(parsed_file)
+        module_summaries.append(summary)
+    
+    print(f"\n✓ Analyzed {len(module_summaries)} modules\n")
+    
+    # ===== PHASE 4: PROJECT SYNTHESIS =====
     print(f"{'='*60}")
+    print("PHASE 4: SYNTHESIZING PROJECT OVERVIEW (LLM)")
+    print(f"{'='*60}\n")
     
-    if parsed_file.module_docstring:
-        print(f"\nModule Docstring:\n  {parsed_file.module_docstring}")
+    project_analysis = analyzer.synthesize_project(module_summaries, project_path)
     
-    if parsed_file.imports:
-        print(f"\nImports ({len(parsed_file.imports)}):")
-        for imp in parsed_file.imports:
-            print(f"  - {imp}")
+    print(f"✓ Project synthesis complete\n")
     
-    if parsed_file.classes:
-        print(f"\nClasses ({len(parsed_file.classes)}):")
-        for cls in parsed_file.classes:
-            print(f"\n  Class: {cls.name}")
-            if cls.docstring:
-                print(f"    Docstring: {cls.docstring}")
-            if cls.methods:
-                print(f"    Methods ({len(cls.methods)}):")
-                for method in cls.methods:
-                    params_str = ", ".join(method.params)
-                    return_str = f" -> {method.returns}" if method.returns else ""
-                    print(f"      - {method.name}({params_str}){return_str}")
-                    if method.docstring:
-                        print(f"        Doc: {method.docstring}")
+    # ===== PHASE 5: DOCUMENTATION GENERATION =====
+    print(f"{'='*60}")
+    print("PHASE 5: GENERATING DOCUMENTATION")
+    print(f"{'='*60}\n")
     
-    if parsed_file.functions:
-        print(f"\nFunctions ({len(parsed_file.functions)}):")
-        for func in parsed_file.functions:
-            params_str = ", ".join(func.params)
-            return_str = f" -> {func.returns}" if func.returns else ""
-            print(f"  - {func.name}({params_str}){return_str}")
-            if func.docstring:
-                print(f"    Doc: {func.docstring}")
+    doc_generator = DocumentationGenerator(output_dir="output")
+    generated_files = doc_generator.generate_all(project_analysis, module_summaries, project_name)
+    
+    print(f"✓ Generated README: {generated_files['readme']}")
+    print(f"✓ Generated Technical Doc: {generated_files['technical_doc']}")
+    
+    # ===== SUMMARY =====
+    print(f"\n{'='*60}")
+    print("DOCUMENTATION GENERATION COMPLETE")
+    print(f"{'='*60}")
+    print(f"\nProject: {project_name}")
+    print(f"Files Analyzed: {len(module_summaries)}")
+    print(f"Output Directory: output/")
+    print(f"\nGenerated Files:")
+    print(f"  - README.md")
+    print(f"  - TECHNICAL_DOC.md")
+    print(f"\n{'='*60}\n")
 
 if __name__ == "__main__":
-    project_path = input("Enter project path: ")
-    parsed_files = analyze_project(project_path)
-
-    # Ask if user wants to see detailed breakdown
-    show_details = input("\nShow detailed file breakdown? (y/n): ").lower()
-    if show_details == 'y':
-        for parsed in parsed_files:
-            print_parsed_file_details(parsed)
+    # Get project path from user
+    project_path = input("Enter project path: ").strip()
+    project_name = input("Enter project name (or press Enter to use folder name): ").strip()
+    
+    if not project_name:
+        project_name = None
+    
+    try:
+        generate_documentation(project_path, project_name)
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
