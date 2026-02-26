@@ -87,7 +87,7 @@ def generate_documentation(project_path: str, project_name: str = None):
     print("PHASE 5: GENERATING DOCUMENTATION")
     print(f"{'='*60}\n")
     
-    doc_generator = DocumentationGenerator(output_dir="output")
+    doc_generator = DocumentationGenerator(output_dir=f"output/{project_name}")
     generated_files = doc_generator.generate_all(project_analysis, module_summaries, project_name)
     
     print(f"✓ Generated README: {generated_files['readme']}")
