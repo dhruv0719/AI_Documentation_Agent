@@ -33,7 +33,7 @@ def generate_documentation(project_path: str, project_name: str = None):
     
     python_files = scan_project(
         project_path, 
-        ignore_dirs=["venv", ".git", "node_modules", "__pycache__", ".venv", "dist", "build", ".pytest_cache"]
+        ignore_dirs=["venv", ".git", "node_modules", "__pycache__", ".venv", "dist", "build", ".pytest_cache", ".github"]
     )
     print(f"✓ Found {len(python_files)} Python files\n")
     
