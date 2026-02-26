@@ -7,6 +7,7 @@ from typing import List
 from models import ParsedFile, ModuleSummary, ProjectAnalysis
 from parser import parse_file
 from scanner import scan_project
+from generator import DocumentationGenerator
 
 class CodeAnalyzer:
     def __init__(self, api_key: str = None):
@@ -279,7 +280,9 @@ Respond with ONLY the JSON object, nothing else."""
             return self.LARGE_MODEL
 
 if __name__ == "__main__":
-    project_root = r"D:\Intership\board size calc\board_size_calc_v2"
+    project_root = r"D:\AI_Documentation_Agent"
+    project_name = "AI Documentation Agent"
+    
     files = scan_project(project_root, ignore_dirs=["venv", ".venv", "__pycache__"])
     
     print(f"Found {len(files)} Python files\n")
@@ -287,38 +290,38 @@ if __name__ == "__main__":
     analyzer = CodeAnalyzer()
     all_summaries = []
     
-    # Loop through ALL files
+    # Analyze all modules
     for file_path in files:
         parsed = parse_file(file_path, project_root)
         if parsed:
             summary = analyzer.analyze_module(parsed)
             all_summaries.append(summary)
             
-            # Print each summary
             print("\n" + "="*60)
             print(f"Analysis of {summary.file_path}")
             print("="*60)
             print(f"\nPurpose: {summary.purpose}")
-            print(f"\nResponsibilities:")
-            for resp in summary.responsibilities:
-                print(f"  - {resp}")
-            print(f"\nKey Components:")
-            for comp in summary.key_components:
-                print(f"  - {comp}")
-            print("\n")
     
     print(f"\n{'='*60}")
     print(f"COMPLETED: Analyzed {len(all_summaries)} files")
     print(f"{'='*60}")
-
-    # After analyzing all modules, synthesize project
+    
+    # Synthesize project
     project_analysis = analyzer.synthesize_project(all_summaries, project_root)
-
+    
     print(f"\n{'='*60}")
     print("PROJECT ANALYSIS")
     print(f"{'='*60}")
     print(f"\nPurpose: {project_analysis.project_purpose}")
-    print(f"\nArchitecture: {project_analysis.architecture_overview}")
-    print(f"\nEntry Points: {', '.join(project_analysis.entry_points)}")
-    print(f"\nModule Relationships: {project_analysis.module_relationships}")
-    print(f"\nDesign Patterns: {', '.join(project_analysis.design_patterns)}")
+    
+    # Generate documentation
+    print(f"\n{'='*60}")
+    print("GENERATING DOCUMENTATION")
+    print(f"{'='*60}\n")
+    
+    doc_generator = DocumentationGenerator(output_dir="output")
+    generated_files = doc_generator.generate_all(project_analysis, all_summaries, project_name)
+    
+    print(f"✓ Generated README: {generated_files['readme']}")
+    print(f"✓ Generated Technical Doc: {generated_files['technical_doc']}")
+    print(f"\nDocumentation files saved to: output/")
