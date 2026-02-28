@@ -1,4 +1,5 @@
 # models/metadata.py
+"""This module defines data models for representing metadata about files and projects, including file hashes, last analysis timestamps, and summaries of file contents. This metadata is crucial for change detection and efficient re-analysis of only modified files."""
 
 from dataclasses import dataclass
 from datetime import datetime
