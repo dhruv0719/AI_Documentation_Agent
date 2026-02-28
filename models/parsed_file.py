@@ -1,4 +1,4 @@
-# models.py
+# models/parsed_file.py
 """This module defines data models for representing parsed information from Python files, including functions, classes, and modules. It also includes models for summarizing module and project-level insights after analysis."""
 from dataclasses import dataclass
 from typing import List, Optional

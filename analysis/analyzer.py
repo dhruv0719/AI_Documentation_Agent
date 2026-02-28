@@ -1,12 +1,12 @@
-# analyzer.py
+# analysis/analyzer.py
 """This module handles LLM-based analysis of parsed code to generate summaries and insights."""
 import os
 import json
 from groq import Groq
 from typing import List
-from models import ParsedFile, ModuleSummary, ProjectAnalysis
-from parser import parse_file
-from scanner import scan_project
+from models.parsed_file import ParsedFile, ModuleSummary, ProjectAnalysis
+from parsers.python_parser import parse_file
+from core.scanner import scan_project
 from generator import DocumentationGenerator
 
 class CodeAnalyzer:

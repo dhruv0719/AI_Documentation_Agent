@@ -1,10 +1,10 @@
-# parser.py
+# parser/python_parser.py
 """This module provides functionality to parse Python files and extract structured information about classes, functions, imports, and docstrings."""
 import ast
 from pathlib import Path
 from typing import Optional
-from scanner import scan_project
-from models import ParsedFile, ClassInfo, FunctionInfo
+from core.scanner import scan_project
+from models.parsed_file import ParsedFile, ClassInfo, FunctionInfo
 
 def parse_file(file_path: str, project_root: Optional[str] = None) -> Optional[ParsedFile]:
     """Parse a Python file and extract structured information."""

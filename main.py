@@ -2,10 +2,10 @@
 """Main orchestrator for the Code Documentation Agent."""
 from typing import List
 from pathlib import Path
-from models import ParsedFile
-from parser import parse_file
-from scanner import scan_project
-from analyzer import CodeAnalyzer
+from models.parsed_file import ParsedFile
+from parsers.python_parser import parse_file
+from core.scanner import scan_project
+from analysis.analyzer import CodeAnalyzer
 from generator import DocumentationGenerator
 
 def generate_documentation(project_path: str, project_name: str = None):

@@ -1,4 +1,4 @@
-# scanner.py
+# core/scanner.py
 """This module provides functionality to scan a project directory and return all Python files, while ignoring specified directories."""
 from pathlib import Path
 from typing import List

@@ -2,7 +2,7 @@
 """This module generates markdown documentation from analysis results."""
 from typing import List, Dict
 from pathlib import Path
-from models import ProjectAnalysis, ModuleSummary
+from models.parsed_file import ProjectAnalysis, ModuleSummary
 
 
 class DocumentationGenerator:
@@ -268,7 +268,7 @@ The following files can be run directly:
 
 if __name__ == "__main__":
     # Test the generator with sample data
-    from models import ProjectAnalysis, ModuleSummary
+    from models.parsed_file import ProjectAnalysis, ModuleSummary
     
     # Sample project analysis
     test_analysis = ProjectAnalysis(
