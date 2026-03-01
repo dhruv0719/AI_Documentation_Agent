@@ -33,6 +33,27 @@ class ModuleSummary:
     key_components: List[str]  # Important classes/functions
     dependencies: List[str]  # What it imports (from ParsedFile)
 
+    def to_dict(self) -> dict:
+        """Convert to dict for JSON serialization"""
+        return {
+            "file_path": self.file_path,
+            "purpose": self.purpose,
+            "responsibilities": self.responsibilities,
+            "key_components": self.key_components,
+            "dependencies": self.dependencies
+        }
+    
+    @staticmethod
+    def from_dict(data: dict) -> 'ModuleSummary':
+        """Create ModuleSummary from dict"""
+        return ModuleSummary(
+            file_path=data["file_path"],
+            purpose=data["purpose"],
+            responsibilities=data["responsibilities"],
+            key_components=data["key_components"],
+            dependencies=data["dependencies"]
+        )
+
 @dataclass 
 class ProjectAnalysis:
     """High-level project understanding after synthesis."""
