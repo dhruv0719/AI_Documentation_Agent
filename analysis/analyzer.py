@@ -1,5 +1,9 @@
 # analysis/analyzer.py
 """This module handles LLM-based analysis of parsed code to generate summaries and insights."""
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))  # Add project root to path
 import os
 import json
 from groq import Groq
@@ -7,7 +11,7 @@ from typing import List
 from models.parsed_file import ParsedFile, ModuleSummary, ProjectAnalysis
 from parsers.python_parser import parse_file
 from core.scanner import scan_project
-from generator import DocumentationGenerator
+from generation.generator import DocumentationGenerator
 
 class CodeAnalyzer:
     def __init__(self, api_key: str = None):
