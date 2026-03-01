@@ -18,7 +18,7 @@ class ChangeReport:
         return bool(self.added_files or self.modified_files or self.deleted_files)
     
     @property
-    def file_to_analyze(self) -> List[str]:
+    def files_to_analyze(self) -> List[str]:
         """List of files that need analysis (added or modified)."""
         return self.added_files + self.modified_files
     
@@ -31,5 +31,5 @@ Change Detection Summary:
 - Deleted: {len(self.deleted_files)} files
 - Unchanged: {len(self.unchanged_files)} files
 
-Files to Analyze: {len(self.file_to_analyze)} (Added + Modified)
+Files to Analyze: {len(self.files_to_analyze)} (Added + Modified)
 """
