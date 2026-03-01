@@ -116,16 +116,14 @@ class ChangeDetector:
                 summary=summaries.get(file_path)
             )
 
-            # Remove deleted files
-            current_files = set(analyzed_files)
-            metadata.files = {
-                f: m for f, m in metadata.files.items() 
-                if f in current_files
-            }
-
-            # Update timestamp
-            metadata.last_updated = datetime.now()
-
-            # Save to disk
-            self.store.save(metadata)
-            
+        # Remove deleted files
+        current_files = set(analyzed_files)
+        metadata.files = {
+            f: m for f, m in metadata.files.items() 
+            if f in current_files
+        }
+        # Update timestamp
+        metadata.last_updated = datetime.now()
+        
+        # Save to disk
+        self.store.save(metadata)
