@@ -34,7 +34,7 @@ class ProjectMetadata:
                 "hash": fm.hash,
                 "last_analyzed": fm.last_analyzed.isoformat(),
                 "size_bytes": fm.size_bytes,
-                "summary": fm.summary.__dict__ if fm.summary else None
+                "summary": fm.summary.to_dict() if fm.summary else None
             } for fp, fm in self.files.items()}
         }
     
@@ -50,6 +50,6 @@ class ProjectMetadata:
                 hash=fm["hash"],
                 last_analyzed=datetime.fromisoformat(fm["last_analyzed"]),
                 size_bytes=fm["size_bytes"],
-                summary=ModuleSummary(**fm["summary"]) if fm["summary"] else None
+                summary=ModuleSummary.from_dict(fm["summary"]) if fm["summary"] else None
             ) for fp, fm in data["files"].items()}
         )
