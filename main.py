@@ -6,7 +6,7 @@ from models.parsed_file import ParsedFile
 from parsers.python_parser import parse_file
 from core.scanner import scan_project
 from analysis.analyzer import CodeAnalyzer
-from generator import DocumentationGenerator
+from generation.generator import DocumentationGenerator
 
 def generate_documentation(project_path: str, project_name: str = None):
     """
