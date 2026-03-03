@@ -17,6 +17,12 @@ class ChangeDetector:
         self.store = MetadataStore(project_root)
         self.hasher = FileHasher()
 
+        # Load metadata Once from disk
+        self._metadata : Optional[ProjectMetadata] = self.store.load()
+
+        # Cache hashes computed during detect_changes(), so update_metadata() doesn't re-hash everything
+        self._current_hashes : Dict[str, str] = {}
+
     def detect_changes(self, current_files: List[str]) -> ChangeReport:
         """
         Compare current files against last analysis
@@ -27,11 +33,10 @@ class ChangeDetector:
         Returns:
             ChangeReport with categorized changes
         """
-        # load previous metadata
-        old_metadata = self.store.load()
-
-        # First run: everything is new
-        if old_metadata is None:
+        # First run - no previous metadata exists
+        if self._metadata is None:
+            # Still hash files now so update_metadata() can reuse them
+            self._current_hashes = self.hasher.hash_files(current_files)
             return ChangeReport(
                 added_files=current_files,
                 modified_files=[],
@@ -39,9 +44,9 @@ class ChangeDetector:
                 unchanged_files=[]
             )
         
-        # Hash current files
-        current_hashes = self.hasher.hash_files(current_files)
-        old_hashes = {f: m.hash for f, m in old_metadata.files.items()}
+        # Hash current files and CACHE for later reuse
+        self._current_hashes = self.hasher.hash_files(current_files)
+        old_hashes = {f: m.hash for f, m in self._metadata.files.items()}
 
         # Categorize changes
         current_set = set(current_files)
@@ -55,7 +60,7 @@ class ChangeDetector:
         unchanged = []
 
         for file in current_set & old_set:
-            if current_hashes[file] != old_hashes[file]:
+            if self._current_hashes[file] != old_hashes[file]:
                 modified.append(file)
             else:
                 unchanged.append(file)
@@ -77,11 +82,11 @@ class ChangeDetector:
         Returns:
             Cached ModuleSummary or None
         """
-        metadata = self.store.load()
-        if not metadata:
+        # Pure memory lookup — called in a LOOP for every unchanged file
+        if not self._metadata:
             return None
 
-        file_meta = metadata.files.get(file_path)
+        file_meta = self._metadata.files.get(file_path)
         return file_meta.summary if file_meta else None
     
     def update_metadata(self, analyzed_files: List[str], summaries: Dict[str, ModuleSummary], project_name: str):
@@ -93,24 +98,32 @@ class ChangeDetector:
             summaries: Map of file_path → ModuleSummary
             project_name: Name of project
         """
-        # Load existing metadata or create new
-        metadata = self.store.load() or ProjectMetadata(
-            project_name=project_name,
-            project_root=str(self.project_root),
-            last_updated=datetime.now(),
-            files={}
-        )
-
-        # Hash analyzed files
-        hashes = self.hasher.hash_files(analyzed_files)
+        # Reuse cached metadata or create fresh
+        if self._metadata is None:
+            self._metadata = ProjectMetadata(
+                project_name=project_name,
+                project_root=str(self.project_root),
+                last_updated=datetime.now(),
+                files={}
+            )
+        
+        # Reuse cached hashes if available, otherwise compute
+        if self._current_hashes:
+            hashes = self._current_hashes
+        else:
+            # Fallback: force mode skips detect_changes, 
+            # so hashes might not be cached
+            hashes = self.hasher.hash_files(analyzed_files)
 
         # Update file metadata
         for file_path in analyzed_files:
             file_size = Path(self.project_root / file_path).stat().st_size
 
-            metadata.files[file_path] = FileMetadata(
+            self._metadata.files[file_path] = FileMetadata(
                 file_path=file_path,
-                hash=hashes[file_path],
+                hash=hashes.get(file_path, self.hasher.hash_file(
+                    str(self.project_root / file_path)
+                )),
                 last_analyzed=datetime.now(),
                 size_bytes=file_size,
                 summary=summaries.get(file_path)
@@ -118,12 +131,17 @@ class ChangeDetector:
 
         # Remove deleted files
         current_files = set(analyzed_files)
-        metadata.files = {
-            f: m for f, m in metadata.files.items() 
+        self._metadata.files = {
+            f: m for f, m in self._metadata.files.items() 
             if f in current_files
         }
         # Update timestamp
-        metadata.last_updated = datetime.now()
+        self._metadata.last_updated = datetime.now()
         
         # Save to disk
-        self.store.save(metadata)
+        self.store.save(self._metadata)
+
+    def reload_metadata(self):
+        """Force re-read from disk (if external process modified it)."""
+        self._metadata = self.store.load()
+        self._current_hashes = {}
