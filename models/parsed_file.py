@@ -2,6 +2,7 @@
 """This module defines data models for representing parsed information from Python files, including functions, classes, and modules. It also includes models for summarizing module and project-level insights after analysis."""
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict
+from pathlib import Path
 
 @dataclass
 class ParameterInfo:
@@ -29,15 +30,19 @@ class FunctionInfo:
     decorators: List[str] = field(default_factory=list)
     is_async: bool = False
     is_private: bool = False  # starts with _
+    is_method: bool = False
     line_number: int = 0
 
     @property
     def signature(self) -> str:
         """Generate readable signature."""
-        params_str = ", ".join(str(p) for p in self.params)
-        prefix = "async " if self.is_async else ""
-        returns_str = f" -> {self.returns}" if self.returns else ""
-        return f"{prefix}def {self.name}({params_str}){returns_str}"
+        params_str = ", ".join(
+            p.name if not p.type_hint else f"{p.name}: {p.type_hint}"
+            for p in self.params
+        )
+        async_prefix = "async " if self.is_async else ""
+        return_suffix = f" -> {self.returns}" if self.returns else ""
+        return f"{async_prefix}def {self.name}({params_str}){return_suffix}"
 
 @dataclass
 class ClassInfo:
@@ -80,6 +85,7 @@ class ParsedFile:
     functions: List[FunctionInfo] = field(default_factory=list)
     global_variables: List[str] = field(default_factory=list)
     line_count: int = 0
+    has_entry_point: bool = False
 
     @property
     def has_content(self) -> bool:
@@ -89,8 +95,7 @@ class ParsedFile:
     @property
     def module_name(self) -> str:
         """Extract module name from file path."""
-        import os
-        return os.path.splitext(os.path.basename(self.file_path))[0]
+        return Path(self.file_path).stem
 
 @dataclass
 class ModuleSummary:
