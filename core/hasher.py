@@ -4,6 +4,9 @@
 import hashlib
 from typing import List, Dict
 
+import logging
+logger = logging.getLogger(__name__)
+
 class FileHasher:
     """Fast, reliable file hashing."""
 
@@ -41,6 +44,6 @@ class FileHasher:
                 hashes[file_path] = FileHasher.hash_file(file_path)
             
             except Exception as e:
-                print(f"Warning: Could not hash {file_path}: {e}")
+                logger.warning(f"Could not hash {file_path}: {e}")
         
         return hashes
