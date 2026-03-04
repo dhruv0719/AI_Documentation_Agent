@@ -33,3 +33,6 @@ Change Detection Summary:
 
 Files to Analyze: {len(self.files_to_analyze)} (Added + Modified)
 """
+
+    def __str__(self) -> str:
+        return f"ChangeReport(+{len(self.added_files)}, ~{len(self.modified_files)}, -{len(self.deleted_files)})"
