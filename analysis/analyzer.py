@@ -11,19 +11,28 @@ from typing import List
 from models.parsed_file import ParsedFile, ModuleSummary, ProjectAnalysis
 from parsers.python_parser import parse_file
 from core.scanner import scan_project
+from models.config_models import LLMConfig
 from generation.generator import DocumentationGenerator
 
 class CodeAnalyzer:
-    def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv("GROQ_API_KEY")
-        if not self.api_key:
-            raise ValueError("GROQ_API_KEY must be set in environment variables or passed to CodeAnalyzer.")
+    def __init__(self, config: LLMConfig = None):
+        if config is None:
+            from core.config import load_config
+            full_config = load_config()
+            config = full_config.llm
         
-        self.client = Groq(api_key=self.api_key)
+        self.config = config
+        self.client = Groq(api_key=config.api_key)
 
-        self.SMALL_MODEL = "qwen/qwen3-32b"
-        self.MEDIUM_MODEL = "openai/gpt-oss-120b"
-        self.LARGE_MODEL = "llama-3.3-70b-versatile"
+    def _select_model(self, parsed_file: ParsedFile) -> str:
+        total = len(parsed_file.classes) + len(parsed_file.functions)
+        
+        if total <= 3:
+            return self.config.get_model("small")
+        elif total <= 10:
+            return self.config.get_model("medium")
+        else:
+            return self.config.get_model("large")
 
     def analyze_module(self, parsed_file: ParsedFile) -> ModuleSummary:
         """
