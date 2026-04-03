@@ -4,6 +4,7 @@
 import json
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 from models.metadata import ProjectMetadata
 
 class MetadataStore:
@@ -49,3 +50,21 @@ class MetadataStore:
         """Delete metadata (force full reanalysis)."""
         if self.metadata_file.exists():
             self.metadata_file.unlink()
+
+    # Add a method to check if metadata exists without loading
+    def exists(self) -> bool:
+        """Check if metadata file exists."""
+        return self.metadata_file.exists()
+    
+    # Add last_updated property
+    def last_updated(self) -> Optional[datetime]:
+        """Get last update time without loading full metadata."""
+        if not self.exists():
+            return None
+        
+        try:
+            stat = self.metadata_file.stat()
+            return datetime.fromtimestamp(stat.st_mtime)
+        
+        except:
+            return None
