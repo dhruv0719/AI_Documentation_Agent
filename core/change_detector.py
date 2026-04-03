@@ -9,6 +9,9 @@ from models.metadata import ProjectMetadata, FileMetadata
 from models.change_report import ChangeReport
 from models.parsed_file import ModuleSummary
 
+import logging
+logger = logging.getLogger(__name__)
+
 class ChangeDetector:
     """Detects which files changed since last analysis."""
 
@@ -65,12 +68,19 @@ class ChangeDetector:
             else:
                 unchanged.append(file)
 
-        return ChangeReport(
+        report = ChangeReport(
             added_files=sorted(added),
             modified_files=sorted(modified),
             deleted_files=sorted(deleted),
             unchanged_files=sorted(unchanged)
         )
+        
+        logger.info(
+            f"Change detection: +{len(report.added_files)} "
+            f"~{len(report.modified_files)} -{len(report.deleted_files)}"
+        )
+    
+        return report
     
     def get_cached_summary(self, file_path: str) -> Optional[ModuleSummary]:
         """
