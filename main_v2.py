@@ -1,27 +1,21 @@
-# main_v2.py
-"""Main orchestrator with change detection (V2)."""
-from typing import List
+# main_v2.py - ENHANCED VERSION
+# Shows what to CHANGE, not complete rewrite
+
+"""Main orchestrator with change detection and enhanced docs (V2)."""
+from typing import List, Dict
 from pathlib import Path
-from models.parsed_file import ParsedFile
-from parsers.python_parser import parse_file  # Your existing parser
-from core.scanner import scan_project         # Your existing scanner
-from analysis.analyzer import CodeAnalyzer    # Your existing analyzer
-from generation.generator import DocumentationGenerator  # Your existing generator
-from core.change_detector import ChangeDetector  # NEW!
+from models.parsed_file import ParsedFile, ModuleSummary
+from parsers.python_parser import parse_file
+from core.scanner import scan_project
+from analysis.analyzer import CodeAnalyzer
+from core.change_detector import ChangeDetector
+
 
 def generate_documentation(
     project_path: str, 
     project_name: str = None, 
     force: bool = False
 ):
-    """
-    Complete pipeline with change detection.
-    
-    Args:
-        project_path: Path to project root
-        project_name: Name of project
-        force: If True, ignore cache and reanalyze everything
-    """
     if project_name is None:
         project_name = Path(project_path).name
     
@@ -30,28 +24,26 @@ def generate_documentation(
     print(f"{'='*60}")
     print(f"Project: {project_name}")
     print(f"Path: {project_path}")
-    print(f"Mode: {'FORCE (full analysis)' if force else 'INCREMENTAL'}\n")
+    print(f"Mode: {'FORCE' if force else 'INCREMENTAL'}\n")
     
     # ===== PHASE 1: SCANNING =====
-    print(f"{'='*60}")
-    print("PHASE 1: SCANNING PROJECT")
-    print(f"{'='*60}\n")
+    print(f"\n📁 PHASE 1: SCANNING PROJECT\n")
     
     python_files = scan_project(
         project_path, 
-        ignore_dirs=["venv", ".git", "node_modules", "__pycache__", ".venv", "dist", "build", ".pytest_cache", ".docagent"]
+        ignore_dirs=[
+            "venv", ".git", "node_modules", "__pycache__", 
+            ".venv", "dist", "build", ".pytest_cache", ".docagent"
+        ]
     )
-    print(f"✓ Found {len(python_files)} Python files\n")
+    print(f"  ✓ Found {len(python_files)} Python files")
     
     # ===== PHASE 2: CHANGE DETECTION =====
-    print(f"{'='*60}")
-    print("PHASE 2: DETECTING CHANGES")
-    print(f"{'='*60}\n")
+    print(f"\n🔍 PHASE 2: DETECTING CHANGES\n")
     
     detector = ChangeDetector(project_path)
     
     if force:
-        # Force full analysis
         from models.change_report import ChangeReport
         changes = ChangeReport(
             added_files=python_files,
@@ -59,53 +51,88 @@ def generate_documentation(
             deleted_files=[],
             unchanged_files=[]
         )
-        print("⚠️  Force mode: Analyzing all files\n")
+        print("  ⚠️  Force mode: Analyzing all files")
     else:
-        # Incremental analysis
         changes = detector.detect_changes(python_files)
         print(changes.summary())
     
     if not changes.has_changes and not force:
-        print("✓ No changes detected. Documentation is up to date!\n")
+        print("  ✓ No changes detected. Documentation is up to date!")
         return
     
-    # ===== PHASE 3: PARSING (only changed files) =====
-    print(f"{'='*60}")
-    print("PHASE 3: PARSING CHANGED FILES")
-    print(f"{'='*60}\n")
+    # ===== PHASE 3: PARSING ALL FILES =====
+    # KEY CHANGE: Parse ALL files, not just changed ones
+    # Why? Generator needs complete picture for docs
+    print(f"\n📝 PHASE 3: PARSING FILES\n")
     
-    parsed_files = []
-    for file_path in changes.files_to_analyze:
-        parsed = parse_file(file_path, project_root=project_path)
-        if parsed:
-            parsed_files.append(parsed)
-            print(f"  ✓ Parsed: {file_path}")
+    all_parsed_files: Dict[str, ParsedFile] = {}
     
-    print(f"\n✓ Parsed {len(parsed_files)} changed files\n")
+    for file_path in python_files:
+        try:
+            parsed = parse_file(file_path, project_root=project_path)
+            if parsed:
+                all_parsed_files[file_path] = parsed
+        except Exception as e:
+            print(f"  ⚠ Skipping {file_path}: {e}")
     
-    # ===== PHASE 4: MODULE ANALYSIS (only changed files) =====
-    print(f"{'='*60}")
-    print("PHASE 4: ANALYZING MODULES (LLM)")
-    print(f"{'='*60}\n")
+    print(f"  ✓ Parsed {len(all_parsed_files)} files")
+    
+    # ===== PHASE 3.5: DEPENDENCY ANALYSIS ===== (NEW!)
+    print(f"\n🔗 PHASE 3.5: ANALYZING DEPENDENCIES\n")
+    
+    dependency_diagram = None
+    try:
+        from analysis.dependency_analyzer import DependencyAnalyzer
+        
+        dep_analyzer = DependencyAnalyzer(
+            project_path, 
+            list(all_parsed_files.values())
+        )
+        dep_graph = dep_analyzer.build_graph()
+        
+        print(f"  ✓ Entry points: {dep_graph.entry_points}")
+        print(f"  ✓ Circular deps: {len(dep_graph.circular_dependencies)}")
+        
+        # Generate Mermaid diagram
+        dependency_diagram = dep_analyzer.to_mermaid(dep_graph)
+        
+        # Get optimal analysis order
+        analysis_order = dep_graph.get_analysis_order()
+        print(f"  ✓ Analysis order computed")
+        
+    except ImportError:
+        print("  ⚠ Dependency analyzer not available, skipping")
+    except Exception as e:
+        print(f"  ⚠ Dependency analysis failed: {e}")
+    
+    # ===== PHASE 4: LLM ANALYSIS (only changed files) =====
+    print(f"\n🤖 PHASE 4: LLM ANALYSIS\n")
     
     analyzer = CodeAnalyzer()
     new_summaries = {}
     
-    for parsed_file in parsed_files:
-        summary = analyzer.analyze_module(parsed_file)
-        new_summaries[parsed_file.file_path] = summary
+    files_to_analyze = changes.files_to_analyze
+    print(f"  Analyzing {len(files_to_analyze)} files...")
     
-    print(f"\n✓ Analyzed {len(new_summaries)} modules\n")
+    for file_path in files_to_analyze:
+        parsed = all_parsed_files.get(file_path)
+        if parsed:
+            try:
+                summary = analyzer.analyze_module(parsed)
+                new_summaries[file_path] = summary
+                print(f"  ✓ {file_path}")
+            except Exception as e:
+                print(f"  ✗ {file_path}: {e}")
+    
+    print(f"\n  ✓ Analyzed {len(new_summaries)} modules")
     
     # ===== MERGE WITH CACHED SUMMARIES =====
-    print(f"{'='*60}")
-    print("MERGING RESULTS")
-    print(f"{'='*60}\n")
+    print(f"\n🔄 MERGING RESULTS\n")
     
-    all_summaries = []
+    all_summaries: Dict[str, ModuleSummary] = {}
     
     # Add new/modified summaries
-    all_summaries.extend(new_summaries.values())
+    all_summaries.update(new_summaries)
     print(f"  ✓ New/Modified: {len(new_summaries)} files")
     
     # Add cached summaries for unchanged files
@@ -113,69 +140,108 @@ def generate_documentation(
     for file_path in changes.unchanged_files:
         cached = detector.get_cached_summary(file_path)
         if cached:
-            all_summaries.append(cached)
+            all_summaries[file_path] = cached
             cached_count += 1
     
     print(f"  ✓ Cached: {cached_count} files")
-    print(f"\nTotal summaries: {len(all_summaries)}\n")
+    print(f"  Total: {len(all_summaries)} summaries")
     
-    # Calculate savings
     if cached_count > 0:
-        savings_pct = (cached_count / len(python_files)) * 100
-        print(f"💰 API Cost Savings: ~{savings_pct:.0f}% ({cached_count}/{len(python_files)} files reused)\n")
+        savings = (cached_count / len(python_files)) * 100
+        print(f"\n  💰 API Savings: ~{savings:.0f}%")
     
     # ===== PHASE 5: PROJECT SYNTHESIS =====
-    print(f"{'='*60}")
-    print("PHASE 5: SYNTHESIZING PROJECT OVERVIEW (LLM)")
-    print(f"{'='*60}\n")
+    print(f"\n🏗️ PHASE 5: PROJECT SYNTHESIS\n")
     
-    project_analysis = analyzer.synthesize_project(all_summaries, project_path)
-    print(f"✓ Project synthesis complete\n")
+    project_analysis = analyzer.synthesize_project(
+        list(all_summaries.values()), 
+        project_path
+    )
+    print(f"  ✓ Project synthesis complete")
     
     # ===== PHASE 6: SAVE METADATA =====
-    print(f"{'='*60}")
-    print("PHASE 6: UPDATING METADATA")
-    print(f"{'='*60}\n")
+    print(f"\n💾 PHASE 6: SAVING METADATA\n")
     
-    all_files = python_files  # All files in project
-    all_summaries_dict = {s.file_path: s for s in all_summaries}
-    detector.update_metadata(all_files, all_summaries_dict, project_name)
+    detector.update_metadata(
+        python_files, 
+        all_summaries, 
+        project_name
+    )
+    print(f"  ✓ Metadata saved")
     
-    print(f"✓ Metadata saved to .docagent/metadata.json\n")
+    # ===== PHASE 7: GENERATE DOCUMENTATION =====
+    print(f"\n📄 PHASE 7: GENERATING DOCUMENTATION\n")
     
-    # ===== PHASE 7: DOCUMENTATION GENERATION =====
-    print(f"{'='*60}")
-    print("PHASE 7: GENERATING DOCUMENTATION")
-    print(f"{'='*60}\n")
+    # KEY CHANGE: Use enhanced generator with ParsedFile data
+    try:
+        from generation.enhanced_generator import EnhancedDocumentationGenerator
+        
+        doc_generator = EnhancedDocumentationGenerator(
+            output_dir=f"output/{project_name}"
+        )
+        
+        result = doc_generator.generate_all(
+            project_analysis=project_analysis,
+            module_summaries=list(all_summaries.values()),
+            parsed_files=list(all_parsed_files.values()),  # NEW!
+            project_name=project_name,
+            dependency_diagram=dependency_diagram  # NEW!
+        )
+        
+        print(f"  ✓ README: {result.readme_path}")
+        print(f"  ✓ Technical Doc: {result.technical_doc_path}")
+        if result.api_reference_path:
+            print(f"  ✓ API Reference: {result.api_reference_path}")
     
-    doc_generator = DocumentationGenerator(output_dir=f"output/{project_name}")
-    generated_files = doc_generator.generate_all(project_analysis, all_summaries, project_name)
-    
-    print(f"✓ Generated README: {generated_files['readme']}")
-    print(f"✓ Generated Technical Doc: {generated_files['technical_doc']}")
+    except ImportError:
+        # Fallback to basic generator
+        from generation.generator import DocumentationGenerator
+        
+        doc_generator = DocumentationGenerator(
+            output_dir=f"output/{project_name}"
+        )
+        generated = doc_generator.generate_all(
+            project_analysis, 
+            list(all_summaries.values()), 
+            project_name
+        )
+        
+        print(f"  ✓ README: {generated['readme']}")
+        print(f"  ✓ Technical Doc: {generated['technical_doc']}")
     
     # ===== SUMMARY =====
     print(f"\n{'='*60}")
-    print("DOCUMENTATION GENERATION COMPLETE")
+    print("✅ DOCUMENTATION GENERATION COMPLETE")
     print(f"{'='*60}")
-    print(f"\nProject: {project_name}")
-    print(f"Files Analyzed: {len(new_summaries)}")
-    print(f"Files Cached: {cached_count}")
-    print(f"Output Directory: output/")
-    print(f"\n{'='*60}\n")
+    print(f"  Project: {project_name}")
+    print(f"  Files Analyzed: {len(new_summaries)}")
+    print(f"  Files Cached: {cached_count}")
+    print(f"  Total Documented: {len(all_summaries)}")
+    print(f"{'='*60}\n")
+
 
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description="Generate project documentation (V2)")
+    parser = argparse.ArgumentParser(
+        description="Code Documentation Agent V2"
+    )
     parser.add_argument("path", help="Project path")
     parser.add_argument("--name", help="Project name")
     parser.add_argument("--force", action="store_true", help="Force full reanalysis")
+    parser.add_argument(
+        "--provider", 
+        choices=["groq", "openai"], 
+        default="groq",
+        help="LLM provider"
+    )
     
     args = parser.parse_args()
     
     try:
         generate_documentation(args.path, args.name, args.force)
+    except KeyboardInterrupt:
+        print("\n\n⚠️ Interrupted by user")
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback

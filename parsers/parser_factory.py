@@ -1,4 +1,4 @@
-# parsers/python_factory.py
+# parsers/parser_factory.py
 """Factory for creating appropriate parser based on file type."""
 
 from pathlib import Path
