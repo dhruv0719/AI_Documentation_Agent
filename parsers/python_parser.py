@@ -60,7 +60,7 @@ class PythonParser:
         for fp in file_paths:
             parsed = self.parse_file(fp)
             if parsed and parsed.has_content:
-                results.append[parsed]
+                results.append(parsed)
         return results
     
     def _extract_imports(self, tree: ast.Module) -> List[ImportInfo]:
@@ -123,7 +123,7 @@ class PythonParser:
         for item in node.body:
             if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
                 class_variables.append(item.target.id)
-            elif isinstance(item, ast.AnnAssign):
+            elif isinstance(item, ast.Assign):
                 for target in item.targets:
                     if isinstance(target, ast.Name):
                         class_variables.append(target.id)
