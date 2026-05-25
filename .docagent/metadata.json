@@ -1,54 +1,25 @@
 {
   "project_name": "Test Project",
   "project_root": "D:\\AI_Documentation_Agent",
-  "last_updated": "2026-03-01T13:33:58.232348",
+  "last_updated": "2026-04-12T14:19:00.734889",
   "files": {
     "main.py": {
       "file_path": "main.py",
       "hash": "34790c98ea94671cf91f712d9eb918d18c96120d35e8f205058a82745e7baaf5",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.723562",
       "size_bytes": 4059,
       "summary": {
         "file_path": "main.py",
-        "purpose": "Coordinates the code documentation process by orchestrating scanning, parsing, analysis, and generation for a Python project.",
+        "purpose": "Main orchestrator for generating code documentation by coordinating parsing, analysis, and generation components.",
         "responsibilities": [
-          "Initiates project scanning and parsing",
-          "Coordinates code analysis for documentation needs",
-          "Generates final documentation output"
+          "Coordinates the documentation generation workflow for code projects",
+          "Integrates parsing, analysis, and generation modules to produce cohesive documentation"
         ],
         "key_components": [
-          "generate_documentation function",
-          "core.scanner module",
-          "analysis.analyzer module",
-          "generation.generator module"
-        ],
-        "dependencies": [
-          "typing",
-          "pathlib",
-          "models.parsed_file",
-          "parsers.python_parser",
-          "core.scanner",
-          "analysis.analyzer",
-          "generation.generator"
-        ]
-      }
-    },
-    "main_v2.py": {
-      "file_path": "main_v2.py",
-      "hash": "39f5d8e4b12e4b06a88abe495afd7e659897559d2d9c81096607caf4d9a6ef32",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 6377,
-      "summary": {
-        "file_path": "main_v2.py",
-        "purpose": "Main orchestrator for generating documentation with change detection to avoid redundant processing.",
-        "responsibilities": [
-          "Coordinates parsing, analysis, and documentation generation workflows",
-          "Detects changes in project files to optimize regeneration",
-          "Handles forced regeneration when specified"
-        ],
-        "key_components": [
-          "generate_documentation function",
-          "core.change_detector module"
+          "core.scanner (project discovery)",
+          "parsers.python_parser (code parsing)",
+          "analysis.analyzer (code understanding)",
+          "generation.generator (documentation output)"
         ],
         "dependencies": [
           "typing",
@@ -58,95 +29,133 @@
           "core.scanner",
           "analysis.analyzer",
           "generation.generator",
-          "core.change_detector"
+          "traceback"
+        ]
+      }
+    },
+    "main_v2.py": {
+      "file_path": "main_v2.py",
+      "hash": "20eab39bcd7584ee8e0b5c8d9806bfb69a09b951fefd7a42b54bf076786b9763",
+      "last_analyzed": "2026-04-12T14:19:00.723562",
+      "size_bytes": 12513,
+      "summary": {
+        "file_path": "main_v2.py",
+        "purpose": "Orchestrate a code documentation pipeline with change detection, dependency analysis, and LLM-powered documentation generation",
+        "responsibilities": [
+          "Coordinate multi-stage documentation pipeline (scan \u2192 analyze \u2192 generate)",
+          "Manage configuration and output generation for code documentation"
+        ],
+        "key_components": [
+          "Change detection system",
+          "Dependency graph analyzer",
+          "LLM integration framework",
+          "Enhanced documentation generator"
+        ],
+        "dependencies": [
+          "time",
+          "argparse",
+          "typing",
+          "pathlib",
+          "models.parsed_file",
+          "models.change_report",
+          "parsers.python_parser",
+          "core.scanner",
+          "core.change_detector",
+          "analysis.analyzer",
+          "core.config",
+          "analysis.dependency_analyzer",
+          "generation.enhanced_generator",
+          "generation.generator",
+          "traceback"
         ]
       }
     },
     "analysis\\analyzer.py": {
       "file_path": "analysis\\analyzer.py",
-      "hash": "5963cee71e6e9bd4e1c0e861062c37d28693c5a6000aefe2bbcaa13720a99958",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 12543,
+      "hash": "194edaed69c9ea3319554a5f32e349befe44bfc0ed7fb54a657a7fd54ce3db5e",
+      "last_analyzed": "2026-04-12T14:19:00.710136",
+      "size_bytes": 11824,
       "summary": {
         "file_path": "analysis\\analyzer.py",
-        "purpose": "This module performs LLM-based analysis on parsed code to generate summaries and insights, leveraging language models for code understanding.",
+        "purpose": "Analyzes code modules using language models to generate documentation and project synthesis",
         "responsibilities": [
-          "Generating human-readable summaries of code structure and functionality",
-          "Extracting key insights about code quality, patterns, and potential issues",
-          "Integrating with language models (LLMs) for advanced code analysis"
+          "Analyzes individual code modules for structure and functionality",
+          "Synthesizes cross-module relationships and project architecture"
         ],
         "key_components": [
-          "CodeAnalyzer class (handles analysis workflow and LLM integration)",
-          "groq client (for interacting with the language model)"
+          "CodeAnalyzer class with LLM integration",
+          "Async analysis capabilities via provider factory",
+          "Prompt construction and response parsing system"
         ],
         "dependencies": [
-          "sys",
-          "pathlib",
-          "os",
           "json",
-          "groq",
+          "asyncio",
           "typing",
           "models.parsed_file",
-          "parsers.python_parser",
-          "core.scanner",
-          "generation.generator"
+          "analysis.provider_factory",
+          "analysis.llm_provider",
+          "models.config_models"
         ]
       }
     },
     "analysis\\dependency_analyzer.py": {
       "file_path": "analysis\\dependency_analyzer.py",
-      "hash": "b8d29a105a4161f58a8f1227d95a5ec0b2d4a08303a4f61c5a4a7788849fe934",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 33,
+      "hash": "68397b6fea4b2004a07e12f57b01449b54a1fd81d1d07ae3c295ecfe3f4d488a",
+      "last_analyzed": "2026-04-12T14:19:00.710136",
+      "size_bytes": 12211,
       "summary": {
         "file_path": "analysis\\dependency_analyzer.py",
-        "purpose": "Analyzes project dependencies and identifies potential issues in module relationships.",
+        "purpose": "Analyzes Python project dependencies to build a graph showing module relationships, helping identify circular dependencies and module importance.",
         "responsibilities": [
-          "Tracks inter-module dependencies",
-          "Detects circular dependencies",
-          "Generates dependency reports"
+          "Builds a dependency graph of module imports",
+          "Detects circular dependencies and calculates module depths",
+          "Generates summaries and Mermaid diagrams for visualization"
         ],
         "key_components": [
-          "dependency_parser()",
-          "dependency_graph()",
-          "report_generator()"
+          "DependencyAnalyzer class",
+          "Graph construction methods (build_graph, _create_nodes)",
+          "Cycle detection and depth calculation",
+          "Mermaid diagram generation (generate_mermaid)"
         ],
-        "dependencies": []
+        "dependencies": [
+          "pathlib",
+          "typing",
+          "collections",
+          "models.parsed_file",
+          "models.dependency_graph",
+          "core.scanner",
+          "parsers.python_parser"
+        ]
       }
     },
     "analysis\\quality_analyzer.py": {
       "file_path": "analysis\\quality_analyzer.py",
       "hash": "f9d0a68d2ae7764d8929859818dd718329a3633356f08f181c7c831e3ef14851",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.715654",
       "size_bytes": 30,
       "summary": {
         "file_path": "analysis\\quality_analyzer.py",
-        "purpose": "This module is currently empty and does not perform any specific functionality or analysis tasks.",
-        "responsibilities": [
-          "None - the module contains no code or functionality"
-        ],
-        "key_components": [
-          "None - no classes or functions defined"
-        ],
+        "purpose": "This module is intended for analyzing code quality metrics but currently contains no implemented functionality.",
+        "responsibilities": [],
+        "key_components": [],
         "dependencies": []
       }
     },
     "cli\\commands.py": {
       "file_path": "cli\\commands.py",
       "hash": "09bdea7013a35840ba9666fa942bf14c78055b5e73bfec6e7e41b88c167fdca2",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.715654",
       "size_bytes": 17,
       "summary": {
         "file_path": "cli\\commands.py",
-        "purpose": "This module is intended to handle command-line interface (CLI) commands but currently contains no functions or classes.",
+        "purpose": "This module is intended to handle command-line interface (CLI) commands but currently contains no implemented functions or classes.",
         "responsibilities": [
-          "Handling CLI command registration",
-          "Executing CLI commands based on user input",
-          "Providing command-related utilities"
+          "Parsing command-line arguments",
+          "Dispatching CLI commands to appropriate handlers"
         ],
         "key_components": [
-          "Command registration functions (not implemented)",
-          "Command execution handlers (not implemented)"
+          "Command-line argument parsing structure",
+          "Placeholder for command dispatch logic"
         ],
         "dependencies": []
       }
@@ -154,37 +163,38 @@
     "cli\\main.py": {
       "file_path": "cli\\main.py",
       "hash": "01148e86a963ce7f7ae1e95ad288ee62b820ba9cab53fed80fa6fa7554d1cdc0",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.715654",
       "size_bytes": 13,
       "summary": {
         "file_path": "cli\\main.py",
-        "purpose": "This module serves as the entry point for a command-line interface (CLI) application but currently contains no code or definitions.",
+        "purpose": "This module serves as the entry point for a command-line interface (CLI) application.",
         "responsibilities": [
-          "Serves as the CLI application's main entry point",
-          "Handles command-line argument parsing and execution"
+          "Handling CLI command execution",
+          "Providing the main runtime interface"
         ],
-        "key_components": [],
+        "key_components": [
+          "CLI argument parsing",
+          "Main execution workflow"
+        ],
         "dependencies": []
       }
     },
     "core\\change_detector.py": {
       "file_path": "core\\change_detector.py",
-      "hash": "574c1b41ca1f91c42aca2fc011c70cde44a95cff9591eadfb69548fa6a66817e",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 4219,
+      "hash": "fc7cda0bfba2643a751263a25cf3a52b6031c1842279c1cccd475f3513a703cb",
+      "last_analyzed": "2026-04-12T14:19:00.718473",
+      "size_bytes": 5537,
       "summary": {
         "file_path": "core\\change_detector.py",
-        "purpose": "Detects changes in files by comparing hashes and metadata to identify modifications, additions, or deletions.",
+        "purpose": "Detects changes in files or data by comparing current state with cached metadata using hashing and metadata storage.",
         "responsibilities": [
-          "Compute and compare file hashes to detect content changes",
-          "Track file metadata over time using a storage system",
-          "Generate structured change reports for file system modifications"
+          "Track file/data modifications through hash comparisons",
+          "Manage metadata storage and retrieval for change detection"
         ],
         "key_components": [
           "ChangeDetector class",
-          "core.hasher module for hash computation",
-          "core.metadata_store for persistent metadata tracking",
-          "models.change_report for structured output"
+          "core.hasher for hash computation",
+          "core.metadata_store for metadata persistence"
         ],
         "dependencies": [
           "pathlib",
@@ -194,143 +204,157 @@
           "core.metadata_store",
           "models.metadata",
           "models.change_report",
-          "models.parsed_file"
+          "models.parsed_file",
+          "logging"
         ]
       }
     },
     "core\\config.py": {
       "file_path": "core\\config.py",
-      "hash": "c56ea99f938a1615fc2aba14c38c6b6c15002c0b7df60918c09eb22ee3d5011a",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 16,
+      "hash": "2173d8deed2cdd022387aed34086da83674034b42b1572478b3b77cc3f312288",
+      "last_analyzed": "2026-04-12T14:19:00.718473",
+      "size_bytes": 9437,
       "summary": {
         "file_path": "core\\config.py",
-        "purpose": "Serves as a configuration module, potentially for holding application settings or constants.",
+        "purpose": "Manages configuration settings for the Code Documentation Agent, supporting JSON and YAML formats.",
         "responsibilities": [
-          "Managing application configuration parameters",
-          "Providing default settings for the application",
-          "Allowing environment-specific configuration overrides"
+          "Loading and saving configuration files in multiple formats (JSON/YAML)",
+          "Providing default configuration templates and file discovery"
         ],
         "key_components": [
-          "Configuration variables (not defined in current code)",
-          "Placeholder for future configuration logic"
+          "ConfigManager class with format-agnostic loading/saving methods",
+          "get_config_manager() and load_config() helper functions"
         ],
-        "dependencies": []
+        "dependencies": [
+          "os",
+          "json",
+          "pathlib",
+          "typing",
+          "models.config_models",
+          "yaml",
+          "yaml"
+        ]
       }
     },
     "core\\hasher.py": {
       "file_path": "core\\hasher.py",
-      "hash": "bed88f3a8d6260579096a2cbca34526952b059fc00a088fb1e6d82ffb1007766",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 1701,
+      "hash": "799e6a439d36ba951ab02a470efccbb9c1ad9bbf43f906ea329e9e09619df210",
+      "last_analyzed": "2026-04-12T14:19:00.718473",
+      "size_bytes": 1757,
       "summary": {
         "file_path": "core\\hasher.py",
-        "purpose": "This module provides utilities for hashing file contents to detect changes between runs.",
+        "purpose": "This module provides utilities for hashing file contents to detect changes efficiently.",
         "responsibilities": [
           "Generate hashes for individual files",
-          "Generate hashes for batches of files",
-          "Compare against previous analyses to determine changes"
+          "Generate hashes for batches of files to detect changes between runs"
         ],
         "key_components": [
           "FileHasher class",
-          "generate_file_hash() method",
-          "generate_batch_hash() method"
+          "hash_file method",
+          "hash_files method"
         ],
         "dependencies": [
           "hashlib",
-          "typing"
+          "typing",
+          "logging"
         ]
       }
     },
     "core\\metadata_store.py": {
       "file_path": "core\\metadata_store.py",
-      "hash": "974337d4abda3cdb030a358027d61de3745481ad53f50d8b216019f18ebb2984",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 1920,
+      "hash": "73cb07b3eb59d5a7fcd2a4a4ab25bbfda2bfe2b07b260eaca0159b183ed8ef45",
+      "last_analyzed": "2026-04-12T14:19:00.719991",
+      "size_bytes": 2531,
       "summary": {
         "file_path": "core\\metadata_store.py",
-        "purpose": "Manages persistent storage of project metadata, enabling efficient access and updates across system runs.",
+        "purpose": "Manages persistent storage and retrieval of project metadata, enabling efficient change detection and analysis across system runs.",
         "responsibilities": [
-          "Loading metadata from disk",
-          "Saving metadata to disk",
-          "Providing access to metadata for analysis",
-          "Handling metadata updates and change detection"
+          "Loading and saving metadata to disk using JSON serialization",
+          "Providing access to metadata state through methods like exists() and last_updated()"
         ],
         "key_components": [
-          "MetadataStore",
-          "models.metadata.Metadata"
+          "MetadataStore class with persistence methods",
+          "Filesystem abstraction using pathlib for cross-platform compatibility"
         ],
         "dependencies": [
           "json",
           "pathlib",
           "typing",
+          "datetime",
           "models.metadata"
         ]
       }
     },
     "core\\scanner.py": {
       "file_path": "core\\scanner.py",
-      "hash": "57535f9c2429af7331681e07ff32cfc3c1ec58c92e3a91d28de8345e30a6b29e",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 2182,
+      "hash": "9eb34168da82da7986b6a19321c726a3941859de2ceca43141bc7b980e66999c",
+      "last_analyzed": "2026-04-12T14:19:00.719991",
+      "size_bytes": 4840,
       "summary": {
         "file_path": "core\\scanner.py",
-        "purpose": "Scans a project directory to identify Python files while excluding specified directories.",
+        "purpose": "Scans a project directory to identify Python files and extract their structural information.",
         "responsibilities": [
-          "Traverse directory structure recursively",
-          "Filter out ignored directories during scanning",
-          "Collect paths of Python files (.py) in the project",
-          "Return list of valid Python file paths"
+          "Traverse project directories while ignoring specified paths",
+          "Collect Python files with their hierarchical structure and entry point metadata"
         ],
         "key_components": [
-          "scan_project function",
-          "pathlib.Path for directory traversal"
+          "Directory scanning functions with tree traversal",
+          "Entry point validation utility for Python files"
         ],
         "dependencies": [
           "pathlib",
-          "typing"
+          "typing",
+          "models.scan_result"
         ]
       }
     },
     "generation\\enhanced_generator.py": {
       "file_path": "generation\\enhanced_generator.py",
-      "hash": "5226692ac0cea390a4e9eae72d0794d8909bd0e8322173d6ae6ae64c25c6ddb8",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 34,
+      "hash": "6321369902c77c25ba24a6bb700f387b143e331fbe82e59f59b07fe94330d6b7",
+      "last_analyzed": "2026-04-12T14:19:00.721541",
+      "size_bytes": 25828,
       "summary": {
         "file_path": "generation\\enhanced_generator.py",
-        "purpose": "The module is currently empty with no defined classes, functions, or docstring, suggesting it may be a placeholder or incomplete implementation.",
+        "purpose": "Generates comprehensive documentation for Python projects using parsed code structure and LLM-generated insights, producing README, technical documentation, and API reference files.",
         "responsibilities": [
-          "Unknown - no code present to determine functionality",
-          "Potentially intended for data/code generation based on the filename"
+          "Generate README.md, TECHNICAL_DOC.md, and API_REFERENCE.md documentation files",
+          "Format module, class, and function details into structured documentation content"
         ],
         "key_components": [
-          "None - no functions/classes exist in the module"
+          "EnhancedDocumentationGenerator",
+          "DocumentationGenerator"
         ],
-        "dependencies": []
+        "dependencies": [
+          "datetime",
+          "pathlib",
+          "typing",
+          "models.generation_result",
+          "models.parsed_file",
+          "models.parsed_file",
+          "time"
+        ]
       }
     },
     "generation\\generator.py": {
       "file_path": "generation\\generator.py",
       "hash": "6735268d1b8e7e4f4697175d07ffe5ff7ef567c82468de422cfa4339ccd357fa",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.721541",
       "size_bytes": 8243,
       "summary": {
         "file_path": "generation\\generator.py",
-        "purpose": "Generates markdown documentation from parsed analysis results, facilitating structured output of processed data.",
+        "purpose": "This module generates markdown documentation from analysis results, focusing on creating README and technical documentation files.",
         "responsibilities": [
-          "Converts parsed file data into markdown format",
-          "Organizes documentation structure based on analysis results",
-          "Handles file system operations for output generation",
-          "Applies consistent formatting to generated documentation"
+          "Generating README files with project structure and key information",
+          "Generating detailed technical documentation for code analysis"
         ],
         "key_components": [
           "DocumentationGenerator class",
-          "Markdown generation methods"
+          "content building methods (_build_readme_content, _build_technical_doc_content)"
         ],
         "dependencies": [
           "typing",
           "pathlib",
+          "models.parsed_file",
           "models.parsed_file"
         ]
       }
@@ -338,35 +362,31 @@
     "github\\action.py": {
       "file_path": "github\\action.py",
       "hash": "7186a48041c9fc3d404f71c07898ffb4674868800c027a77deed847956b463d2",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.723562",
       "size_bytes": 18,
       "summary": {
         "file_path": "github\\action.py",
-        "purpose": "This module is intended to handle GitHub Actions workflows but currently contains no code or implementation.",
-        "responsibilities": [
-          "Placeholder for GitHub action execution logic",
-          "Future integration with GitHub API for workflow automation"
-        ],
+        "purpose": "This module currently contains no functions, classes, or implementations and serves as an empty namespace or placeholder.",
+        "responsibilities": [],
         "key_components": [],
         "dependencies": []
       }
     },
     "models\\change_report.py": {
       "file_path": "models\\change_report.py",
-      "hash": "3417614d8ffb082deb2a82b35fd471d4d5bfd8f62d64c41a52f68d34ee7e30d8",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 1420,
+      "hash": "fdbfa624ea138a20b9f5350de61657c001fed48dc274e6bd3e5d3146f2b39864",
+      "last_analyzed": "2026-04-12T14:19:00.723562",
+      "size_bytes": 1568,
       "summary": {
         "file_path": "models\\change_report.py",
-        "purpose": "Tracks changes in project files to determine what needs re-analysis.",
+        "purpose": "Captures differences between project states to determine which files require re-analysis",
         "responsibilities": [
-          "Captures differences between current and previous project states",
-          "Categorizes files into added, modified, deleted, and unchanged groups",
-          "Identifies files requiring re-analysis based on changes"
+          "Tracks added/modified/deleted/unchanged files between analysis sessions",
+          "Identifies files that need re-analysis based on detected changes"
         ],
         "key_components": [
-          "ChangeReport class",
-          "data fields for file change tracking"
+          "ChangeReport class with change tracking attributes",
+          "Methods for checking change status and generating analysis summaries"
         ],
         "dependencies": [
           "dataclasses",
@@ -376,33 +396,43 @@
     },
     "models\\dependency_graph.py": {
       "file_path": "models\\dependency_graph.py",
-      "hash": "a71184ccc28008c1bea27ed5edcc9a6406a8aba8758685268e5ac77149344290",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 28,
+      "hash": "5434d6a09070b99e9ab44f70b21de270adb374dc4d9dba170bfc385e14e438a1",
+      "last_analyzed": "2026-04-12T14:19:00.728498",
+      "size_bytes": 9120,
       "summary": {
         "file_path": "models\\dependency_graph.py",
-        "purpose": "This module appears to be empty or incomplete, as it contains no imports, classes, functions, or a docstring.",
-        "responsibilities": [],
-        "key_components": [],
-        "dependencies": []
+        "purpose": "Models and analyzes dependencies between software modules, detecting relationships, coupling, and circular dependencies.",
+        "responsibilities": [
+          "Tracking module dependencies and their structural relationships",
+          "Identifying circular dependencies and coupling metrics"
+        ],
+        "key_components": [
+          "ModuleNode (represents individual modules with dependency relationships)",
+          "CircularDependency (detects and represents dependency cycles)",
+          "DependencyGraph (manages the overall module dependency structure)"
+        ],
+        "dependencies": [
+          "pathlib",
+          "dataclasses",
+          "typing"
+        ]
       }
     },
     "models\\metadata.py": {
       "file_path": "models\\metadata.py",
       "hash": "fb66edaff25a8d524aed2bc6fc7f278952e2f3b65f2719f75800f484477c9a2e",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.730038",
       "size_bytes": 2244,
       "summary": {
         "file_path": "models\\metadata.py",
-        "purpose": "Defines data structures for tracking file and project metadata to enable change detection and efficient re-analysis of modified files.",
+        "purpose": "This module defines data models for representing metadata about files and projects, including file hashes, last analysis timestamps, and summaries of file contents. This metadata is crucial for change detection and efficient re-analysis of only modified files.",
         "responsibilities": [
-          "Storing file-level metadata including hashes and analysis timestamps",
-          "Maintaining project-level metadata aggregations",
-          "Providing change detection capabilities through versioned metadata comparison"
+          "Track file and project metadata for change detection",
+          "Store summaries and timestamps for efficient re-analysis"
         ],
         "key_components": [
-          "FileMetadata class for individual file tracking",
-          "ProjectMetadata class for managing file metadata collections"
+          "FileMetadata class for individual file metadata",
+          "ProjectMetadata class for aggregated project metadata"
         ],
         "dependencies": [
           "dataclasses",
@@ -414,144 +444,161 @@
     },
     "models\\parsed_file.py": {
       "file_path": "models\\parsed_file.py",
-      "hash": "cda01f5e265313ac8e1c02315fc1a41ea56f406f1ab9b8323677e63ca4a37f02",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 2111,
+      "hash": "e1251b057bf9f5c7c0d031f938ef972f52e8b7fe5035f3cec549904e9d2a0e88",
+      "last_analyzed": "2026-04-12T14:19:00.730038",
+      "size_bytes": 4889,
       "summary": {
         "file_path": "models\\parsed_file.py",
-        "purpose": "This module defines data models for representing parsed Python code elements and their analysis summaries.",
+        "purpose": "Provides data models for representing parsed Python file elements and summarizing analysis at module and project levels.",
         "responsibilities": [
-          "Represent parsed functions, classes, and modules",
-          "Store hierarchical code structure",
-          "Provide module and project-level analysis summaries"
+          "Represent functions, classes, imports, and parameters extracted from Python files",
+          "Offer helper methods for introspection and string representation",
+          "Enable conversion of module summaries to and from dictionaries",
+          "Aggregate analysis results across modules for project-wide insights"
         ],
         "key_components": [
+          "ParameterInfo",
+          "FunctionInfo",
+          "ClassInfo",
+          "ImportInfo",
           "ParsedFile",
-          "ModuleSummary"
+          "ModuleSummary",
+          "ProjectAnalysis"
         ],
         "dependencies": [
           "dataclasses",
-          "typing"
+          "typing",
+          "pathlib"
         ]
       }
     },
     "parsers\\base_parser.py": {
       "file_path": "parsers\\base_parser.py",
-      "hash": "250df7ee4e1b80852ae420c4e0c1473fe29efb9e0df4870a530e8039fd236d3d",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 24,
+      "hash": "d399c861b3aa7e25a802d5c00caa7dbf519569899f6b21a54a162aeb0f319cf0",
+      "last_analyzed": "2026-04-12T14:19:00.732868",
+      "size_bytes": 1258,
       "summary": {
         "file_path": "parsers\\base_parser.py",
-        "purpose": "Serves as a base class for parsing data, providing common functionality and structure for derived parser classes.",
+        "purpose": "Provides an abstract base class for language-agnostic file parsing interfaces.",
         "responsibilities": [
-          "Defining a common interface for parsers",
-          "Providing default parsing methods for subclasses",
-          "Enabling extension through inheritance"
+          "Defines common parsing interface for derived parser classes",
+          "Specifies supported file extensions for language-specific parsers"
         ],
         "key_components": [
-          "BaseParser class (implied by filename)",
-          "Shared parsing utilities (hypothetical)"
+          "BaseParser abstract class",
+          "supported_extensions method"
         ],
-        "dependencies": []
+        "dependencies": [
+          "abc",
+          "typing",
+          "models.parsed_file"
+        ]
       }
     },
     "parsers\\javascript_parser.py": {
       "file_path": "parsers\\javascript_parser.py",
       "hash": "639b2ca9533ce98e50196d746df2bcdf406496fa7f093787ca30aa301111438c",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.732868",
       "size_bytes": 30,
       "summary": {
         "file_path": "parsers\\javascript_parser.py",
-        "purpose": "The module is intended to parse JavaScript code but currently lacks implementation.",
+        "purpose": "This module is intended for parsing JavaScript code but currently contains no code, imports, classes, or functions.",
         "responsibilities": [
           "Parsing JavaScript code",
-          "Extracting relevant data structures",
-          "Converting JavaScript to another format"
+          "Handling JavaScript-specific syntax and structures"
         ],
-        "key_components": [],
+        "key_components": [
+          "JavaScript parsing logic (missing)",
+          "Parser utilities (missing)"
+        ],
         "dependencies": []
       }
     },
     "parsers\\parser_factory.py": {
       "file_path": "parsers\\parser_factory.py",
-      "hash": "c08058bc48eeaf699e15edbb998daf1003696c5692863dae589d5f32f5584926",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 26,
+      "hash": "3cab6bf2155e70fb6881aa482da828df4de72bf964747421f74f1111ee72f20e",
+      "last_analyzed": "2026-04-12T14:19:00.734889",
+      "size_bytes": 2151,
       "summary": {
         "file_path": "parsers\\parser_factory.py",
-        "purpose": "This module is designed to act as a factory for creating parser instances, though it currently contains no code.",
+        "purpose": "Factory for creating appropriate parser based on file type.",
         "responsibilities": [
-          "Instantiating appropriate parser classes based on input type/configuration",
-          "Providing a centralized location for parser creation logic",
-          "Abstracting parser implementation details from clients"
+          "Instantiates the correct parser class based on file extension",
+          "Maintains registry of supported parser types"
         ],
         "key_components": [
-          "Parser factory function/class (not implemented)",
-          "Parser class registrations (not implemented)"
+          "ParserFactory class",
+          "supported_extensions method"
         ],
-        "dependencies": []
+        "dependencies": [
+          "pathlib",
+          "typing",
+          "parsers.base_parser",
+          "parsers.python_parser"
+        ]
       }
     },
     "parsers\\python_parser.py": {
       "file_path": "parsers\\python_parser.py",
-      "hash": "ed472141ab00cff2a55f6ad5260b512f79c7e2e5bdf175acdbeddc0a6ab80c63",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 3577,
+      "hash": "4f6cc7ffd0224341f6d443dd806da515d0028bec0448eb4d20cbfeddc7c15762",
+      "last_analyzed": "2026-04-12T14:19:00.734889",
+      "size_bytes": 12776,
       "summary": {
         "file_path": "parsers\\python_parser.py",
-        "purpose": "Parses Python files to extract structured information about functions, classes, imports, and docstrings for code analysis.",
+        "purpose": "This module parses Python files to extract structured information about classes, functions, imports, and docstrings.",
         "responsibilities": [
-          "Parsing Python source files into abstract syntax trees (ASTs)",
-          "Extracting function definitions and their metadata",
-          "Collecting import statements and docstring content",
-          "Generating structured representations of code elements"
+          "Parsing Python files to extract classes, functions, imports, and docstrings",
+          "Providing methods to analyze and structure code elements like parameters, decorators, and global variables"
         ],
         "key_components": [
-          "parse_file (entry point for file processing)",
-          "_extract_function_info (AST node analysis helper)"
+          "PythonParser class",
+          "parse_file function"
         ],
         "dependencies": [
           "ast",
           "pathlib",
           "typing",
           "core.scanner",
-          "models.parsed_file"
+          "models.parsed_file",
+          "core.scanner"
         ]
       }
     },
     "parsers\\typescript_parser.py": {
       "file_path": "parsers\\typescript_parser.py",
       "hash": "53634b2e6c3d35368bbdf9862144ac840ecd1edc4977495e14ebbc5b03b7ca5b",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.734889",
       "size_bytes": 30,
       "summary": {
         "file_path": "parsers\\typescript_parser.py",
-        "purpose": "This module is intended to provide parsing functionality for TypeScript code but currently contains no implementation or code.",
+        "purpose": "This module is intended to parse TypeScript code, though it currently contains no implemented functionality.",
         "responsibilities": [
-          "Parsing TypeScript code structures",
-          "Converting TypeScript types to Python equivalents",
-          "Handling TypeScript syntax analysis"
+          "Parsing TypeScript syntax",
+          "Converting TypeScript code to another format (unimplemented)"
         ],
-        "key_components": [],
+        "key_components": [
+          "Placeholder parsing functions (missing)",
+          "TypeScript AST handling (planned)"
+        ],
         "dependencies": []
       }
     },
     "test\\test_change_detection.py": {
       "file_path": "test\\test_change_detection.py",
       "hash": "400444d2c2bfd280e070dec4241f156e8cd67f76e6de57703211f17ae64595d5",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.734889",
       "size_bytes": 2992,
       "summary": {
         "file_path": "test\\test_change_detection.py",
-        "purpose": "This module tests the change detection functionality implemented in the core.change_detector module.",
+        "purpose": "This module contains a test case for verifying the functionality of the change detection system in the core module.",
         "responsibilities": [
-          "Verifies correct detection of changes in file data",
-          "Tests edge cases for change detection logic",
-          "Validates integration with parsed_file model"
+          "Testing the accuracy of change detection between file states",
+          "Validating edge cases in change detection logic"
         ],
         "key_components": [
           "test_change_detection() function",
-          "core.change_detector module"
+          "core.change_detector module integration",
+          "models.parsed_file data handling"
         ],
         "dependencies": [
           "sys",
@@ -564,41 +611,265 @@
     "generation\\visualizers\\graphviz.py": {
       "file_path": "generation\\visualizers\\graphviz.py",
       "hash": "9c73a3e48ff2d73d7a9a1570668cce7560044456cab64025d9940460b17510c4",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
+      "last_analyzed": "2026-04-12T14:19:00.721541",
       "size_bytes": 36,
       "summary": {
         "file_path": "generation\\visualizers\\graphviz.py",
-        "purpose": "This module appears to be a placeholder or incomplete implementation for Graphviz visualization functionality within a code generation system.",
+        "purpose": "Provides integration with Graphviz for generating visual graphs and diagrams.",
         "responsibilities": [
-          "Serving as a structural component in a visualizer package hierarchy",
-          "Potentially providing Graphviz integration capabilities (unimplemented)",
-          "Acting as an interface for future visualization implementation"
+          "Converting data structures into Graphviz DOT format",
+          "Rendering visualizations using Graphviz tools"
         ],
         "key_components": [
-          "Module structure for Graphviz integration",
-          "Pending classes/functions for visualization logic"
+          "DOT format conversion functions",
+          "Graphviz rendering interface"
         ],
         "dependencies": []
       }
     },
     "generation\\visualizers\\mermaid.py": {
       "file_path": "generation\\visualizers\\mermaid.py",
-      "hash": "ceac6030b87ecacd24456f0f34500a4175bad23d023e38c43bbfa66dc3f701f3",
-      "last_analyzed": "2026-03-01T13:33:58.232348",
-      "size_bytes": 35,
+      "hash": "8d3613cb4503dde01230ce3fcd8891b199bf03f7bea97f9801e9e5affc4345a9",
+      "last_analyzed": "2026-04-12T14:19:00.723562",
+      "size_bytes": 6785,
       "summary": {
         "file_path": "generation\\visualizers\\mermaid.py",
-        "purpose": "Generates Mermaid diagrams for visualizing data or processes.",
+        "purpose": "Generates Mermaid.js diagrams for Python projects including class hierarchies, module dependencies, and architecture visualizations",
         "responsibilities": [
-          "Converts data structures into Mermaid syntax",
-          "Renders Mermaid diagrams for user consumption",
-          "Integrates with other visualization tools in the framework"
+          "Creating class diagrams from parsed class data",
+          "Generating dependency diagrams between modules/files",
+          "Visualizing project architecture with Mermaid syntax"
         ],
         "key_components": [
-          "generate_mermaid() function",
-          "MermaidDiagram class"
+          "MermaidGenerator class with diagram generation methods",
+          "generate_dependency_diagram() function",
+          "generate_class_diagram() function"
         ],
-        "dependencies": []
+        "dependencies": [
+          "typing",
+          "pathlib",
+          "dataclasses",
+          "models.parsed_file"
+        ]
+      }
+    },
+    "analysis\\llm_provider.py": {
+      "file_path": "analysis\\llm_provider.py",
+      "hash": "c5e7725822a7d0da8f6d3af352c71bee6a107ac454e4670c26ad1fe28460595c",
+      "last_analyzed": "2026-04-12T14:19:00.713632",
+      "size_bytes": 4415,
+      "summary": {
+        "file_path": "analysis\\llm_provider.py",
+        "purpose": "Provides an abstract interface for LLM providers with synchronous and asynchronous generation capabilities.",
+        "responsibilities": [
+          "Defines a standardized API for interacting with different LLM implementations",
+          "Handles request retries and model configuration retrieval"
+        ],
+        "key_components": [
+          "BaseLLMProvider abstract class",
+          "generate/generate_sync methods",
+          "generate_with_retry/retry logic",
+          "get_model method"
+        ],
+        "dependencies": [
+          "time",
+          "asyncio",
+          "abc",
+          "models.llm_models"
+        ]
+      }
+    },
+    "analysis\\provider_factory.py": {
+      "file_path": "analysis\\provider_factory.py",
+      "hash": "9188d6d002cac66924ba872e247a5715488ddcab68abd207314caf7a6037489d",
+      "last_analyzed": "2026-04-12T14:19:00.713632",
+      "size_bytes": 1814,
+      "summary": {
+        "file_path": "analysis\\provider_factory.py",
+        "purpose": "Factory module for instantiating LLM providers based on configuration or direct parameters.",
+        "responsibilities": [
+          "Create and configure LLM provider instances (e.g., Groq, OpenAI)",
+          "Initialize providers using either explicit parameters or configuration objects"
+        ],
+        "key_components": [
+          "get_llm_provider(provider, api_key, temperature, max_tokens, config)",
+          "get_llm_provider_from_config(config)"
+        ],
+        "dependencies": [
+          "typing",
+          "analysis.llm_provider",
+          "analysis.providers.groq_provider",
+          "analysis.providers.openai_provider",
+          "models.config_models"
+        ]
+      }
+    },
+    "analysis\\providers\\__init__.py": {
+      "file_path": "analysis\\providers\\__init__.py",
+      "hash": "c172d5f21d9f7afbdfe18c8610cf00954c0d27d7b25f22e4002a4ec21b3293d3",
+      "last_analyzed": "2026-04-12T14:19:00.713632",
+      "size_bytes": 241,
+      "summary": {
+        "file_path": "analysis\\providers\\__init__.py",
+        "purpose": "Serves as an entry point for LLM provider implementations, grouping related modules under the providers package.",
+        "responsibilities": [
+          "Initialize the providers package namespace",
+          "Expose LLM provider implementations for external access"
+        ],
+        "key_components": [
+          "groq_provider module",
+          "openai_provider module"
+        ],
+        "dependencies": [
+          "analysis.providers.groq_provider",
+          "analysis.providers.openai_provider"
+        ]
+      }
+    },
+    "analysis\\providers\\groq_provider.py": {
+      "file_path": "analysis\\providers\\groq_provider.py",
+      "hash": "e862dd04b8c4d5f6bcc40d9196c7b222ee0e219c29b663d460e6febf8adcac4e",
+      "last_analyzed": "2026-04-12T14:19:00.715654",
+      "size_bytes": 3950,
+      "summary": {
+        "file_path": "analysis\\providers\\groq_provider.py",
+        "purpose": "Provides integration with Groq's LLM API for asynchronous and synchronous text generation",
+        "responsibilities": [
+          "Implement Groq-specific message formatting for API requests",
+          "Handle both asynchronous and synchronous text generation workflows"
+        ],
+        "key_components": [
+          "GroqProvider class",
+          "_build_messages method for request formatting",
+          "generate/generate_sync methods for text production"
+        ],
+        "dependencies": [
+          "os",
+          "typing",
+          "groq",
+          "analysis.llm_provider",
+          "models.llm_models"
+        ]
+      }
+    },
+    "analysis\\providers\\openai_provider.py": {
+      "file_path": "analysis\\providers\\openai_provider.py",
+      "hash": "8f78d45edf7613338402839fa60a20561b0988d4e75fb3cdf498f0fe2e106131",
+      "last_analyzed": "2026-04-12T14:19:00.715654",
+      "size_bytes": 2526,
+      "summary": {
+        "file_path": "analysis\\providers\\openai_provider.py",
+        "purpose": "Provides integration with OpenAI's language models for asynchronous and synchronous text generation.",
+        "responsibilities": [
+          "Initializing OpenAI API configuration",
+          "Generating text responses using OpenAI's language models"
+        ],
+        "key_components": [
+          "OpenAIProvider class",
+          "generate and generate_sync methods"
+        ],
+        "dependencies": [
+          "os",
+          "typing",
+          "openai",
+          "analysis.llm_provider",
+          "models.llm_models"
+        ]
+      }
+    },
+    "models\\config_models.py": {
+      "file_path": "models\\config_models.py",
+      "hash": "94012a5f5811b64fbe186d6d0d74d9d9425b64c7488799fa578d995f7f1a0b99",
+      "last_analyzed": "2026-04-12T14:19:00.728498",
+      "size_bytes": 3271,
+      "summary": {
+        "file_path": "models\\config_models.py",
+        "purpose": "Defines data models for application configuration, including LLM, scanner, output, and change detection settings, and provides mechanisms to validate and instantiate components.",
+        "responsibilities": [
+          "Represent configuration parameters as dataclasses for type safety and clarity.",
+          "Validate configuration values and provide defaults during initialization.",
+          "Facilitate loading and accessing configuration data across the application."
+        ],
+        "key_components": [
+          "LLMConfig with __post_init__ validation and get_model factory method",
+          "Config aggregation of all sub-configs",
+          "Dataclass-based structure for scanner, output, and change detection settings"
+        ],
+        "dependencies": [
+          "os",
+          "json",
+          "pathlib",
+          "typing",
+          "dataclasses"
+        ]
+      }
+    },
+    "models\\generation_result.py": {
+      "file_path": "models\\generation_result.py",
+      "hash": "73027ff1159bcfd1d5c6a52b71206b63acee57235cc381e7a35a768ac9931622",
+      "last_analyzed": "2026-04-12T14:19:00.730038",
+      "size_bytes": 1147,
+      "summary": {
+        "file_path": "models\\generation_result.py",
+        "purpose": "Defines a data model to represent the results of a generation process, including metadata and output details.",
+        "responsibilities": [
+          "Storing structured data about generated outputs",
+          "Providing a summary representation of generation results"
+        ],
+        "key_components": [
+          "GenerationResult dataclass",
+          "summary() method for result visualization"
+        ],
+        "dependencies": [
+          "datetime",
+          "pathlib",
+          "typing",
+          "dataclasses"
+        ]
+      }
+    },
+    "models\\llm_models.py": {
+      "file_path": "models\\llm_models.py",
+      "hash": "eba044652d785917631f68f3b282cd67d967d124224653ec88463636d722fa65",
+      "last_analyzed": "2026-04-12T14:19:00.730038",
+      "size_bytes": 824,
+      "summary": {
+        "file_path": "models\\llm_models.py",
+        "purpose": "Defines data structures and custom exception classes for interacting with language model providers.",
+        "responsibilities": [
+          "Represent LLM responses in a structured dataclass.",
+          "Provide specific exception types for provider errors, rate limits, authentication failures, and missing models."
+        ],
+        "key_components": [
+          "LLMResponse dataclass",
+          "LLMProviderError, RateLimitError, AuthenticationError, ModelNotFoundError exception classes"
+        ],
+        "dependencies": [
+          "dataclasses"
+        ]
+      }
+    },
+    "models\\scan_result.py": {
+      "file_path": "models\\scan_result.py",
+      "hash": "56a2a9c94d231b9af1519bf56cff8b779fe75d7b7d6d50db6cf61718dd4f1740",
+      "last_analyzed": "2026-04-12T14:19:00.730038",
+      "size_bytes": 3088,
+      "summary": {
+        "file_path": "models\\scan_result.py",
+        "purpose": "This module defines data models for representing and processing project scanning results, including file/directory structures and metadata.",
+        "responsibilities": [
+          "Modeling file system structures as hierarchical data objects",
+          "Providing methods to analyze and format scan output data"
+        ],
+        "key_components": [
+          "FileNode (represents individual files)",
+          "DirectoryNode (manages directory hierarchies)",
+          "ScanResult (aggregates scan metadata and file tree)"
+        ],
+        "dependencies": [
+          "dataclasses",
+          "typing"
+        ]
       }
     }
   }
