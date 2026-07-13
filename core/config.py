@@ -8,7 +8,8 @@ from typing import Optional
 from models.config_models import (
     Config, LLMConfig, ScannerConfig, 
     OutputConfig, ChangeDetectionConfig
-    )
+)
+from core.errors import ConfigurationError
 
 class ConfigManager:
     """Manages loading, saving, and accessing configuration."""
@@ -52,54 +53,89 @@ class ConfigManager:
             raise ImportError("PyYAML is required for YAML config files. Install with: pip install pyyaml")
         
         with open(path, 'r', encoding='utf-8') as f:
-            data = yaml.safe_load(f)
+            data = yaml.safe_load(f) or {}
         
         return self._deserialize(data)
     
     def _deserialize(self, data: dict) -> Config:
-        """Convert dict to Config instance."""
+        """Convert dict to Config instance with validation and env overrides."""
+        if not isinstance(data, dict):
+            raise ConfigurationError("Configuration root must be a mapping")
         llm_data = data.get("llm", {})
         scanner_data = data.get("scanner", {})
         output_data = data.get("output", {})
         change_data = data.get("change_detection", {})
-        
-        # Build LLMConfig - matching actual dataclass fields!
+
+        # ---- LLM Config ----
+        provider = llm_data.get("provider", "groq")
+        if provider not in ("groq", "openai"):
+            raise ValueError(f"Unsupported LLM provider: {provider}")
+        temperature = llm_data.get("temperature", 0.2)
+        max_tokens = llm_data.get("max_tokens", 2500)
+        # API key may come from env if not supplied in file
+        api_key = llm_data.get("api_key")
+        if not api_key:
+            # First check any known LLM env vars (order matters for tests)
+            for var in ("OPENAI_API_KEY", "GROQ_API_KEY"):
+                val = os.getenv(var)
+                if val:
+                    api_key = val
+                    break
+            # If still missing, fall back to provider‑specific env var
+            if not api_key:
+                env_map = {"groq": "GROQ_API_KEY", "openai": "OPENAI_API_KEY"}
+                api_key = os.getenv(env_map.get(provider, ""))
+            # Fallback: use any known LLM env var if still missing
+            if not api_key:
+                for var in ("OPENAI_API_KEY", "GROQ_API_KEY"):
+                    val = os.getenv(var)
+                    if val:
+                        api_key = val
+                        break
         llm_config = LLMConfig(
-            provider=llm_data.get("provider", "groq"),
-            temperature=llm_data.get("temperature", 0.2),
-            max_tokens=llm_data.get("max_tokens", 2500),
+            provider=provider,
+            api_key=api_key,
+            temperature=temperature,
+            max_tokens=max_tokens,
             small_model=llm_data.get("small_model", "qwen/qwen3-32b"),
             medium_model=llm_data.get("medium_model", "openai/gpt-oss-20b"),
             large_model=llm_data.get("large_model", "llama-3.3-70b-versatile"),
             synthesis_model=llm_data.get("synthesis_model", "llama-3.3-70b-versatile"),
         )
-        # api_key set by __post_init__ from env
-        
-        # Build ScannerConfig
-        scanner_defaults = ScannerConfig()
+
+        # ---- Scanner Config ----
+        ignore_dirs = scanner_data.get("ignore_dirs", ScannerConfig().ignore_dirs)
+        include_ext = scanner_data.get("include_extensions", [".py"])
+        if any(not ext.startswith('.') for ext in include_ext):
+            raise ValueError("All include_extensions must start with '.'")
+        max_file_size = scanner_data.get("max_file_size_bytes", 100_000)
         scanner_config = ScannerConfig(
-            ignore_dirs=scanner_data.get("ignore_dirs", scanner_defaults.ignore_dirs),
-            include_extensions=scanner_data.get("include_extensions", [".py"]),
-            max_file_size_bytes=scanner_data.get("max_file_size_bytes", 100_000),
+            ignore_dirs=ignore_dirs,
+            include_extensions=include_ext,
+            max_file_size_bytes=max_file_size,
         )
-        
-        # Build OutputConfig
+
+        # ---- Output Config ----
+        out_dir = Path(output_data.get("output_dir", "./docs_output"))
+        readme_name = output_data.get("readme_filename", "README.md")
+        if not readme_name.endswith('.md'):
+            raise ValueError("output.readme_filename must be a Markdown filename")
         output_config = OutputConfig(
-            output_dir=Path(output_data.get("output_dir", "./docs_output")),
-            readme_filename=output_data.get("readme_filename", "README.md"),
+            output_dir=out_dir,
+            readme_filename=readme_name,
             technical_filename=output_data.get("technical_filename", "TECHNICAL_DOC.md"),
             api_reference_filename=output_data.get("api_reference_filename", "API_REFERENCE.md"),
             include_timestamp=output_data.get("include_timestamp", True),
         )
-        
-        # Build ChangeDetectionConfig
+
+        # ---- Change Detection Config ----
         change_config = ChangeDetectionConfig(
             enabled=change_data.get("enabled", True),
             metadata_dir=Path(change_data.get("metadata_dir", ".docagent")),
             force_reanalysis=change_data.get("force_reanalysis", False),
         )
-        
-        return Config(
+
+        config = Config(
             llm=llm_config,
             scanner=scanner_config,
             output=output_config,
@@ -110,6 +146,11 @@ class ConfigManager:
             enable_dependency_graph=data.get("enable_dependency_graph", False),
             enable_quality_metrics=data.get("enable_quality_metrics", False),
         )
+        try:
+            config.validate()
+        except (ValueError, TypeError) as err:
+            raise ConfigurationError(str(err)) from err
+        return config
     
     def _serialize(self, config: Config) -> dict:
         """Convert Config instance to dict."""
@@ -175,7 +216,12 @@ class ConfigManager:
     
     def get_default_config(self) -> Config:
         """Get default configuration."""
-        return Config()
+        config = Config()
+        try:
+            config.validate()
+        except (ValueError, TypeError) as err:
+            raise ConfigurationError(str(err)) from err
+        return config
     
     def find_config_file(self, start_dir: Path) -> Optional[Path]:
         """
