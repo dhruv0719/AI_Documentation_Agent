@@ -2,7 +2,8 @@
 """This module provides utilities for hashing file contents to detect changes efficiently. It includes functions to generate hashes for individual files and batches of files, which can be used to compare against previous analyses and determine what has changed since the last run."""
 
 import hashlib
-from typing import List, Dict
+from pathlib import Path
+from typing import List, Dict, Optional, Union
 
 import logging
 logger = logging.getLogger(__name__)
@@ -31,7 +32,10 @@ class FileHasher:
         return sha256.hexdigest()
     
     @staticmethod
-    def hash_files(file_paths: List[str]) -> Dict[str, str]:
+    def hash_files(
+        file_paths: List[str],
+        project_root: Optional[Union[str, Path]] = None,
+    ) -> Dict[str, str]:
         """
         Hash multiple files efficiently.
         
@@ -39,9 +43,11 @@ class FileHasher:
             Dict mapping file_path → hash
         """
         hashes = {}
+        base_path = Path(project_root) if project_root else None
         for file_path in file_paths:
             try:
-                hashes[file_path] = FileHasher.hash_file(file_path)
+                resolved_path = base_path / file_path if base_path else Path(file_path)
+                hashes[file_path] = FileHasher.hash_file(str(resolved_path))
             
             except Exception as e:
                 logger.warning(f"Could not hash {file_path}: {e}")
