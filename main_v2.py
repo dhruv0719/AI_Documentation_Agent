@@ -79,6 +79,7 @@ def generate_documentation(
     python_files = scan_result.all_files
     project_tree = scan_result.get_tree_string()
     
+    print(f"  Project Structure:\n{project_tree}")
     print(f"  ✓ Found {scan_result.total_files} Python files")
     print(f"  ✓ Total size: {scan_result.total_size_mb:.2f} MB")
     print(f"  ✓ Entry points: {scan_result.entry_points}")
