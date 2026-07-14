@@ -2,6 +2,8 @@
 """This module manages the persistent storage of project metadata, including loading and saving metadata to disk. It provides a simple interface for the rest of the system to access and update metadata about files and projects, ensuring that change detection and analysis can be performed efficiently across runs."""
 
 import json
+import tempfile
+import os
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
@@ -38,12 +40,18 @@ class MetadataStore:
             return None
         
     def save(self, metadata: ProjectMetadata):
-        """Save metadata to disk."""
+        """Save metadata to disk atomically."""
         try:
-            with open(self.metadata_file, "w", encoding="utf-8") as f:
-                json.dump(metadata.to_json(), f, indent=2)
-
-        except Exception as e:
+            # Write to a temporary file first for atomicity
+            dir_name = os.path.dirname(self.metadata_file)
+            with tempfile.NamedTemporaryFile('w', delete=False,
+                                             dir=dir_name,
+                                             encoding='utf-8') as tf:
+                json.dump(metadata.to_json(), tf, indent=2)
+                temp_name = tf.name
+            # Replace the old file atomically
+            os.replace(temp_name, self.metadata_file)
+        except Exception as e:  # pragma: no cover
             print(f"Error: Could not save metadata: {e}")
 
     def clear(self):

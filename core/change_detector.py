@@ -39,7 +39,7 @@ class ChangeDetector:
         # First run - no previous metadata exists
         if self._metadata is None:
             # Still hash files now so update_metadata() can reuse them
-            self._current_hashes = self.hasher.hash_files(current_files)
+            self._current_hashes = self.hasher.hash_files(current_files, self.project_root)
             return ChangeReport(
                 added_files=current_files,
                 modified_files=[],
@@ -48,7 +48,7 @@ class ChangeDetector:
             )
         
         # Hash current files and CACHE for later reuse
-        self._current_hashes = self.hasher.hash_files(current_files)
+        self._current_hashes = self.hasher.hash_files(current_files, self.project_root)
         old_hashes = {f: m.hash for f, m in self._metadata.files.items()}
 
         # Categorize changes
@@ -123,7 +123,7 @@ class ChangeDetector:
         else:
             # Fallback: force mode skips detect_changes, 
             # so hashes might not be cached
-            hashes = self.hasher.hash_files(analyzed_files)
+            hashes = self.hasher.hash_files(analyzed_files, self.project_root)
 
         # Update file metadata
         for file_path in analyzed_files:
