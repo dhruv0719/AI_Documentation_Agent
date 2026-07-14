@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict
 from pathlib import Path
+from models.language import SourceLanguage
 
 @dataclass
 class ParameterInfo:
@@ -86,6 +87,7 @@ class ParsedFile:
     global_variables: List[str] = field(default_factory=list)
     line_count: int = 0
     has_entry_point: bool = False
+    language: SourceLanguage = SourceLanguage.PYTHON
 
     @property
     def has_content(self) -> bool:
