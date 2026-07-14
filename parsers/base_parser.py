@@ -4,6 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from models.parsed_file import ParsedFile
+from models.language import SourceLanguage
 
 class BaseParser(ABC):
     """
@@ -14,6 +15,12 @@ class BaseParser(ABC):
     """
     def __init__(self, project_root: Optional[str] = None):
         self.project_root = project_root
+
+    @property
+    @abstractmethod
+    def language(self) -> SourceLanguage:
+        """Language produced by this parser."""
+        pass
     
     @abstractmethod
     def parse_file(self, file_path: str) -> Optional[ParsedFile]:
@@ -38,3 +45,4 @@ class BaseParser(ABC):
     def supported_extensions(self) -> List[str]:
         """Return list of file extensions this parser handles."""
         pass
+    

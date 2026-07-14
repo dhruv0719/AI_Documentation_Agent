@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Optional, List
 from core.scanner import scan_project
 from models.parsed_file import ParsedFile, ClassInfo, FunctionInfo, ParameterInfo, ImportInfo
+from models.language import SourceLanguage
+from parsers.base_parser import BaseParser
 
-class PythonParser:
+class PythonParser(BaseParser):
     """
     Enhanced Python parser using AST.
     
@@ -19,7 +21,16 @@ class PythonParser:
     - Entry point detection
     """
     def __init__(self, project_root: Optional[str] = None):
+        super().__init__(project_root)
         self.project_root = Path(project_root) if project_root else None
+
+    @property
+    def language(self) -> SourceLanguage:
+        return SourceLanguage.PYTHON
+
+    @property
+    def supported_extensions(self) -> List[str]:
+        return [".py"]
 
     def parse_file(self, file_path: str) -> Optional[ParsedFile]:
         """Parse a Python file and extract all information."""
@@ -49,7 +60,8 @@ class PythonParser:
             functions=self._extract_functions(tree),
             global_variables=self._extract_global_variables(tree),
             line_count=len(content.splitlines()),
-            has_entry_point=self._check_entry_point(tree)
+            has_entry_point=self._check_entry_point(tree),
+            language=self.language,
         )
         
         return parsed
