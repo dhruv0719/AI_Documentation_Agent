@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Optional, Dict, Type
 from parsers.base_parser import BaseParser
 from parsers.python_parser import PythonParser
+from parsers.javascript_parser import JavaScriptParser
+from parsers.typescript_parser import TypeScriptParser
 
 class ParserFactory:
     """
@@ -19,9 +21,10 @@ class ParserFactory:
     # Registry of parsers by extension
     _parsers: Dict[str, Type[BaseParser]] = {
         '.py': PythonParser,
-        # Future:
-        # '.js': JavaScriptParser,
-        # '.ts': TypeScriptParser,
+        '.js': JavaScriptParser,
+        '.jsx': JavaScriptParser,
+        '.ts': TypeScriptParser,
+        '.tsx': TypeScriptParser,
     }
 
     def __init__(self, project_root: Optional[str] = None):
