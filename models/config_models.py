@@ -108,3 +108,20 @@ class Config:
     # Feature flags
     enable_dependency_graph: bool = False
     enable_quality_metrics: bool = False
+
+    def validate(self) -> None:
+        """Validate values that can be checked without external services."""
+        if not self.llm.provider or not isinstance(self.llm.provider, str):
+            raise ValueError("llm.provider must be a non-empty string")
+        if not 0 <= self.llm.temperature <= 2:
+            raise ValueError("llm.temperature must be between 0 and 2")
+        if self.llm.max_tokens <= 0:
+            raise ValueError("llm.max_tokens must be greater than zero")
+        if not self.scanner.include_extensions:
+            raise ValueError("scanner.include_extensions must not be empty")
+        if any(not extension.startswith(".") for extension in self.scanner.include_extensions):
+            raise ValueError("scanner.include_extensions entries must begin with '.'")
+        if self.scanner.max_file_size_bytes <= 0:
+            raise ValueError("scanner.max_file_size_bytes must be greater than zero")
+        if not self.output.readme_filename.endswith(".md"):
+            raise ValueError("output.readme_filename must be a Markdown filename")
