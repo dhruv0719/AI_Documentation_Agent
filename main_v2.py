@@ -16,6 +16,7 @@ Features:
 
 import time
 import argparse
+from dataclasses import replace
 from typing import Dict, Optional
 from pathlib import Path
 
@@ -24,6 +25,9 @@ from models.change_report import ChangeReport
 from parsers.python_parser import PythonParser, parse_file
 from core.scanner import scan_project, scan_project_with_tree
 from core.change_detector import ChangeDetector
+from core.config import load_config
+from core.environment import load_dotenv
+from core.logging_config import configure_logging
 from analysis.analyzer import CodeAnalyzer
 
 
@@ -31,7 +35,7 @@ def generate_documentation(
     project_path: str,
     project_name: Optional[str] = None,
     force: bool = False,
-    provider: str = "groq",
+    provider: Optional[str] = None,
     output_dir: Optional[str] = None
 ):
     """
@@ -46,22 +50,16 @@ def generate_documentation(
     """
     start_time = time.time()
     
-    if project_name is None:
-        project_name = Path(project_path).name
-    
-    if output_dir is None:
-        output_dir = f"output/{project_name}"
-    
-    # Load config if available
-    try:
-        from core.config import load_config
-        config = load_config(project_root=Path(project_path))
-        ignore_dirs = config.scanner.ignore_dirs
-    except Exception:
-        ignore_dirs = [
-            "venv", ".git", "node_modules", "__pycache__",
-            ".venv", "dist", "build", ".pytest_cache", ".docagent"
-        ]
+    project_root = Path(project_path).resolve()
+    config = load_config(project_root=project_root)
+    configure_logging(config.log_level, config.verbose)
+    load_dotenv(project_root)
+
+    project_name = project_name or config.project_name or project_root.name
+    output_dir = output_dir or str(config.output.output_dir / project_name)
+    provider = provider or config.llm.provider
+    force = force or config.change_detection.force_reanalysis
+    ignore_dirs = config.scanner.ignore_dirs
     
     print(f"\n{'='*60}")
     print(f"📚 CODE DOCUMENTATION AGENT V2")
@@ -170,7 +168,8 @@ def generate_documentation(
     # ===== PHASE 4: LLM ANALYSIS (only changed files) =====
     print(f"\n🤖 PHASE 4: LLM ANALYSIS\n")
     
-    analyzer = CodeAnalyzer(provider=provider)
+    llm_config = config.llm if provider == config.llm.provider else replace(config.llm, provider=provider)
+    analyzer = CodeAnalyzer.from_config(llm_config)
     new_summaries: Dict[str, ModuleSummary] = {}
     
     files_to_analyze = changes.files_to_analyze
@@ -314,8 +313,8 @@ Examples:
     parser.add_argument(
         "--provider",
         choices=["groq", "openai"],
-        default="groq",
-        help="LLM provider to use (default: groq)"
+        default=None,
+        help="LLM provider to use (default: configured provider, or groq)"
     )
     parser.add_argument(
         "--output", "-o",
