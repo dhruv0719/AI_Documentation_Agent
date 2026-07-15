@@ -1,17 +1,20 @@
 # parsers/typescript_parser.py
 """TypeScript/TSX parser using tree-sitter.
 
-Provides a concrete ``BaseParser`` implementation that parses TypeScript and TSX files
-using the ``tree_sitter`` library (via ``tree_sitter_typescript``). Extraction mirrors
-the JavaScript parser: imports, classes (including inheritance and arrow‑function class
-fields), top‑level functions (declarations and arrow functions), async variants, and
-JSDoc comments.
+Mirrors javascript_parser.py, but the TypeScript grammar is NOT identical to the
+JavaScript grammar - verified via inspect_ts_nodes.py against the real installed
+grammar. Key differences from JS:
+  - Typed parameters are wrapped in `required_parameter` / `optional_parameter`
+    nodes with `pattern` and `type` fields, not bare `identifier` nodes.
+  - Class fields use type `public_field_definition`, not `field_definition`.
+  - `extends` lives in `class_heritage` -> `extends_clause` (field `value`),
+    not a bare identifier directly under `class_heritage`.
+No regex fallback - all extraction is done via grammar node types/fields.
 """
 
 import logging
 from pathlib import Path
 from typing import List, Optional
-import re
 
 from tree_sitter import Parser, Language
 from tree_sitter_typescript import language_typescript, language_tsx
@@ -30,50 +33,57 @@ logger = logging.getLogger(__name__)
 
 
 def _node_text(node, source: bytes) -> str:
-    """Return the source text for a tree‑sitter node."""
-    return source[node.start_byte : node.end_byte].decode("utf-8")
-
-
-def _attach_leading_docstring(node, source: bytes) -> Optional[str]:
-    """Return a JSDoc comment immediately preceding ``node`` if present.
-
-    Walks backwards over named siblings until a block comment starting with ``/**``
-    is found, then strips delimiters and leading ``*`` characters.
-    """
-    prev = node.prev_named_sibling
-    while prev:
-        if prev.type == "comment":
-            comment = _node_text(prev, source)
-            if comment.startswith('/**'):
-                lines = comment.strip('/**/').split('\n')
-                cleaned = "\n".join(line.lstrip(' *') for line in lines).strip()
-                return cleaned
-        if prev.type not in {"comment", "program"}:
-            break
-        prev = prev.prev_named_sibling
-    return None
+    return source[node.start_byte:node.end_byte].decode("utf-8")
 
 
 def _is_async(node) -> bool:
+    """async is an unnamed leading child token, same as in the JS grammar."""
     return any(child.type == "async" for child in node.children)
 
 
 def _get_base_classes(class_node, source: bytes) -> List[str]:
+    """extends lives in class_heritage -> extends_clause (field 'value'),
+    not directly under class_heritage as in the JS grammar."""
     bases: List[str] = []
     for child in class_node.children:
         if child.type == "class_heritage":
             for gc in child.children:
-                if gc.type in ("identifier", "member_expression"):
-                    bases.append(_node_text(gc, source))
+                if gc.type == "extends_clause":
+                    value_node = gc.child_by_field_name("value")
+                    if value_node:
+                        bases.append(_node_text(value_node, source))
     return bases
 
 
 def _extract_params(params_node, source: bytes) -> List[ParameterInfo]:
+    """TS wraps each parameter in required_parameter / optional_parameter,
+    with the actual name under field 'pattern' and the type under field
+    'type' (a type_annotation node, e.g. ': string'). Plain 'identifier'
+    params (untyped, rare in .ts but valid) are also handled as a fallback
+    node type, matching the JS grammar shape."""
     if not params_node:
         return []
     params: List[ParameterInfo] = []
     for p in params_node.named_children:
-        if p.type == "identifier":
+        if p.type in ("required_parameter", "optional_parameter"):
+            pattern_node = p.child_by_field_name("pattern")
+            type_node = p.child_by_field_name("type")
+            value_node = p.child_by_field_name("value")  # default value, if any
+            if pattern_node is None:
+                continue
+            name = _node_text(pattern_node, source)
+            type_hint = None
+            if type_node:
+                # type_annotation text includes the leading ':' - strip it
+                raw = _node_text(type_node, source)
+                type_hint = raw[1:].strip() if raw.startswith(":") else raw.strip()
+            default_value = _node_text(value_node, source) if value_node else None
+            params.append(ParameterInfo(
+                name=name,
+                type_hint=type_hint,
+                default_value=default_value,
+            ))
+        elif p.type == "identifier":
             params.append(ParameterInfo(name=_node_text(p, source)))
         elif p.type == "assignment_pattern":
             left = p.child_by_field_name("left")
@@ -83,39 +93,49 @@ def _extract_params(params_node, source: bytes) -> List[ParameterInfo]:
                     name=_node_text(left, source),
                     default_value=_node_text(right, source) if right else None,
                 ))
-        elif p.type in ("rest_pattern",):
+        elif p.type == "rest_pattern":
             inner = p.named_children[0] if p.named_children else None
             if inner:
                 params.append(ParameterInfo(name=f"*{_node_text(inner, source)}"))
-    # Fallback: some grammars wrap parameter nodes differently (typed params like "a: string").
-    if not params and params_node is not None:
-        raw = _node_text(params_node, source).strip()
-        # Strip surrounding parentheses if present
-        if raw.startswith("(") and raw.endswith(")"):
-            raw = raw[1:-1]
-        parts = [p.strip() for p in raw.split(",") if p.strip()]
-        for part in parts:
-            # remove default assignment and type annotations
-            # match leading identifier possibly prefixed by '...'
-            m = re.match(r'^(?:\.\.\.)?([A-Za-z_][A-Za-z0-9_]*)', part)
-            if m:
-                params.append(ParameterInfo(name=m.group(1)))
-
     return params
 
 
-class TypeScriptParser(BaseParser):
-    """Parse TypeScript/TSX files using tree‑sitter.
+def _attach_leading_docstring(node, source: bytes) -> Optional[str]:
+    """Same approach validated for the JS parser: only the immediately
+    preceding sibling counts, and it must be a /** */ block comment."""
+    prev = node.prev_sibling
+    if prev is None or prev.type != "comment":
+        return None
 
-    The parser follows the same extraction strategy as ``JavaScriptParser`` but
-    uses the TypeScript grammar. It supports both ``.ts`` and ``.tsx`` extensions.
+    comment_text = _node_text(prev, source).strip()
+    if not comment_text.startswith("/**"):
+        return None
+
+    text = comment_text
+    if text.startswith("/**"):
+        text = text[3:]
+    if text.endswith("*/"):
+        text = text[:-2]
+
+    lines = text.split("\n")
+    cleaned_lines = [line.strip().lstrip("*").strip() for line in lines]
+    cleaned = "\n".join(l for l in cleaned_lines if l or True).strip()
+    return cleaned or None
+
+
+class TypeScriptParser(BaseParser):
+    """Parse TypeScript/TSX files using tree-sitter.
+
+    Uses the dedicated TS grammar for .ts and the TSX grammar for .tsx,
+    since JSX syntax requires the separate tsx grammar variant.
     """
 
     def __init__(self, project_root: Optional[str] = None):
         super().__init__(project_root)
-        self._parser = Parser()
-        # Default language; will be switched per file if needed
-        self._parser.language = Language(language_typescript())
+        self._ts_parser = Parser()
+        self._ts_parser.language = Language(language_typescript())
+        self._tsx_parser = Parser()
+        self._tsx_parser.language = Language(language_tsx())
 
     @property
     def language(self) -> SourceLanguage:
@@ -125,22 +145,16 @@ class TypeScriptParser(BaseParser):
     def supported_extensions(self) -> List[str]:
         return [".ts", ".tsx"]
 
-    # ---------------------------------------------------------------------
-    # File handling helpers
-    # ---------------------------------------------------------------------
     def _read_source(self, file_path: str) -> bytes:
         full_path = Path(self.project_root) / file_path if self.project_root else Path(file_path)
         return full_path.read_bytes()
 
-    def _set_language_for_file(self, file_path: str):
+    def _parser_for_file(self, file_path: str) -> Parser:
         ext = Path(file_path).suffix.lower()
-        if ext == ".tsx":
-            self._parser.language = Language(language_tsx())
-        else:
-            self._parser.language = Language(language_typescript())
+        return self._tsx_parser if ext == ".tsx" else self._ts_parser
 
     # ---------------------------------------------------------------------
-    # Extraction helpers – similar to JavaScriptParser but using TypeScript grammar
+    # Extraction helpers
     # ---------------------------------------------------------------------
     def _extract_imports(self, root, source: bytes) -> List[ImportInfo]:
         imports: List[ImportInfo] = []
@@ -148,18 +162,32 @@ class TypeScriptParser(BaseParser):
             if node.type == "import_statement":
                 module_node = node.child_by_field_name("source")
                 if module_node:
-                    module_name = _node_text(module_node, source).strip('"\'')
+                    module_name = _node_text(module_node, source).strip("\"'")
                     imports.append(ImportInfo(module=module_name, is_from_import=True))
-            if node.type == "expression_statement" and node.child_by_field_name("expression"):
-                expr = node.child_by_field_name("expression")
+
+            if node.type == "expression_statement" and node.named_child_count > 0:
+                expr = node.named_children[0]
                 if expr.type == "call_expression":
                     function_node = expr.child_by_field_name("function")
                     if function_node and _node_text(function_node, source) == "require":
                         arg_node = expr.child_by_field_name("arguments")
                         if arg_node and arg_node.named_child_count > 0:
                             module_node = arg_node.named_children[0]
-                            module_name = _node_text(module_node, source).strip('"\'')
+                            module_name = _node_text(module_node, source).strip("\"'")
                             imports.append(ImportInfo(module=module_name, is_from_import=False))
+
+            if node.type in ("lexical_declaration", "variable_declaration"):
+                for declarator in node.named_children:
+                    if declarator.type != "variable_declarator":
+                        continue
+                    value = declarator.child_by_field_name("value")
+                    if value and value.type == "call_expression":
+                        fn = value.child_by_field_name("function")
+                        if fn and _node_text(fn, source) == "require":
+                            args = value.child_by_field_name("arguments")
+                            if args and args.named_child_count > 0:
+                                module_name = _node_text(args.named_children[0], source).strip("\"'")
+                                imports.append(ImportInfo(module=module_name, is_from_import=False))
         return imports
 
     def _extract_class_members(self, class_node, source: bytes) -> List[FunctionInfo]:
@@ -184,8 +212,9 @@ class TypeScriptParser(BaseParser):
                     line_number=child.start_point[0] + 1,
                 ))
 
-            elif child.type == "field_definition":
-                name_node = child.child_by_field_name("property")
+            # verified: TS uses public_field_definition, NOT field_definition
+            elif child.type == "public_field_definition":
+                name_node = child.child_by_field_name("name")
                 field_name = _node_text(name_node, source) if name_node else "<anonymous>"
                 value_node = child.child_by_field_name("value")
                 if value_node and value_node.type in ("arrow_function", "function"):
@@ -208,17 +237,15 @@ class TypeScriptParser(BaseParser):
             if node.type == "class_declaration":
                 name_node = node.child_by_field_name("name")
                 class_name = _node_text(name_node, source) if name_node else "<anonymous>"
-                classes.append(
-                    ClassInfo(
-                        name=class_name,
-                        docstring=_attach_leading_docstring(node, source),
-                        methods=self._extract_class_members(node, source),
-                        base_classes=_get_base_classes(node, source),
-                        decorators=[],
-                        class_variables=[],
-                        line_number=node.start_point[0] + 1,
-                    )
-                )
+                classes.append(ClassInfo(
+                    name=class_name,
+                    docstring=_attach_leading_docstring(node, source),
+                    methods=self._extract_class_members(node, source),
+                    base_classes=_get_base_classes(node, source),
+                    decorators=[],
+                    class_variables=[],
+                    line_number=node.start_point[0] + 1,
+                ))
         return classes
 
     def _extract_functions(self, root, source: bytes) -> List[FunctionInfo]:
@@ -235,11 +262,11 @@ class TypeScriptParser(BaseParser):
                     docstring=_attach_leading_docstring(node, source),
                     decorators=[],
                     is_async=_is_async(node),
-                    is_private=func_name.startswith('_'),
+                    is_private=func_name.startswith("_"),
                     line_number=node.start_point[0] + 1,
                 ))
 
-            if node.type in {"lexical_declaration", "variable_declaration"}:
+            if node.type in ("lexical_declaration", "variable_declaration"):
                 for declarator in node.named_children:
                     if declarator.type != "variable_declarator":
                         continue
@@ -247,17 +274,17 @@ class TypeScriptParser(BaseParser):
                     init_node = declarator.child_by_field_name("value")
                     if not name_node or not init_node:
                         continue
-                    func_name = _node_text(name_node, source)
-                    if init_node.type in {"arrow_function", "function"}:
-                        param_node = init_node.child_by_field_name("parameters")
+                    if init_node.type in ("arrow_function", "function"):
+                        func_name = _node_text(name_node, source)
+                        params_node = init_node.child_by_field_name("parameters")
                         functions.append(FunctionInfo(
                             name=func_name,
-                            params=_extract_params(param_node, source),
+                            params=_extract_params(params_node, source),
                             returns=None,
-                            docstring=_attach_leading_docstring(declarator, source),
+                            docstring=_attach_leading_docstring(node, source),
                             decorators=[],
                             is_async=_is_async(init_node),
-                            is_private=func_name.startswith('_'),
+                            is_private=func_name.startswith("_"),
                             line_number=declarator.start_point[0] + 1,
                         ))
         return functions
@@ -272,6 +299,9 @@ class TypeScriptParser(BaseParser):
                         return True
         return False
 
+    def _has_parse_errors(self, root) -> bool:
+        return root.type == "ERROR" or root.has_error
+
     # ---------------------------------------------------------------------
     # Public API
     # ---------------------------------------------------------------------
@@ -281,20 +311,28 @@ class TypeScriptParser(BaseParser):
         except Exception as e:
             logger.warning(f"Failed to read {file_path}: {e}")
             return None
-        self._set_language_for_file(file_path)
+
+        parser = self._parser_for_file(file_path)
         try:
-            tree = self._parser.parse(source)
+            tree = parser.parse(source)
         except Exception as e:
             logger.warning(f"Tree-sitter failed to parse {file_path}: {e}")
             return None
+
         root = tree.root_node
-        if any(child.type == "ERROR" for child in root.children):
-            logger.warning(f"Tree‑sitter reported syntax errors in {file_path}")
+
+        if self._has_parse_errors(root):
+            logger.warning(
+                f"Tree-sitter reported syntax errors in {file_path}; "
+                f"extraction may be incomplete for this file."
+            )
+
         imports = self._extract_imports(root, source)
         classes = self._extract_classes(root, source)
         functions = self._extract_functions(root, source)
         line_count = source.count(b"\n") + 1
         has_entry = self._detect_entry_point(root, source)
+
         return ParsedFile(
             file_path=file_path,
             module_docstring=None,
@@ -315,25 +353,41 @@ class TypeScriptParser(BaseParser):
                 results.append(parsed)
         return results
 
+
 if __name__ == "__main__":
-    # Quick manual test for TypeScript parsing
     sample_ts = """
-    /** Sample class */
-    class Base {}
-    class MyClass extends Base {
-        /** method doc */
-        async myMethod(param: string) {}
-        /** arrow prop doc */
-        arrowProp = async () => {};
-    }
-    const topArrow = (a: number, b: number) => a + b;
-    function topFunc(x: number) { return x; }
-    if (require.main === module) { console.log('entry'); }
-    """
+/** Sample class */
+class Base {}
+class MyClass extends Base {
+    /** method doc */
+    async myMethod(param: string) {}
+    /** arrow prop doc */
+    arrowProp = async () => {};
+}
+const topArrow = (a: number, b: number) => a + b;
+function topFunc(x: number) { return x; }
+if (require.main === module) { console.log('entry'); }
+"""
     from tempfile import NamedTemporaryFile
     with NamedTemporaryFile(delete=False, suffix=".ts", mode="w", encoding="utf-8") as f:
         f.write(sample_ts)
         path = f.name
+
     parser = TypeScriptParser()
     parsed = parser.parse_file(path)
-    print(parsed)
+
+    print(f"File: {parsed.file_path}")
+    print(f"Lines: {parsed.line_count}")
+    print(f"Entry Point: {parsed.has_entry_point}")
+
+    print(f"\nClasses ({len(parsed.classes)}):")
+    for cls in parsed.classes:
+        print(f"  - {cls.name}  bases={cls.base_classes}  doc={cls.docstring!r}")
+        for m in cls.methods:
+            print(f"      - {m.name}(async={m.is_async}) doc={m.docstring!r} "
+                  f"params={[(p.name, p.type_hint) for p in m.params]}")
+
+    print(f"\nFunctions ({len(parsed.functions)}):")
+    for func in parsed.functions:
+        print(f"  - {func.name}(async={func.is_async}) "
+              f"params={[(p.name, p.type_hint) for p in func.params]}")
