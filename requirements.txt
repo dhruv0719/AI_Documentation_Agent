@@ -1,3 +1,6 @@
 groq
 openai
 pyyaml
+tree_sitter
+tree_sitter_javascript
+tree_sitter_typescript

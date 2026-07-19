@@ -10,7 +10,8 @@ class FileNode:
     path: str           # Relative path from project root
     name: str           # Just the filename
     size_bytes: int     # File size
-    is_entry_point: bool = False  # Has if __name__ == "__main__"
+    is_entry_point: bool = False  # Has if __name__ == "__main__" / require.main === module
+    language: str = ""             # Source language ("python", "javascript", "typescript")
 
 @dataclass
 class DirectoryNode:
@@ -46,8 +47,10 @@ class ScanResult:
     tree: DirectoryNode              # Hierarchical tree structure
     all_files: List[str]             # Flat list of all file paths
     entry_points: List[str]          # Files with if __name__ == "__main__"
-    total_files: int                 # Total Python files found
-    total_size_bytes: int            # Total size of all Python files
+    total_files: int                 # Total supported-language files found
+    total_size_bytes: int            # Total size of all scanned files
+    languages: List[str] = field(default_factory=list)          # Detected source languages
+    frameworks: List[str] = field(default_factory=list)         # Detected frameworks
     
     @property
     def total_size_mb(self) -> float:

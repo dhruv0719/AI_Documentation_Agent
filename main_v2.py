@@ -22,7 +22,7 @@ from pathlib import Path
 
 from models.parsed_file import ParsedFile, ModuleSummary
 from models.change_report import ChangeReport
-from parsers.python_parser import PythonParser, parse_file
+from parsers.parser_factory import ParserFactory
 from core.scanner import scan_project, scan_project_with_tree
 from core.change_detector import ChangeDetector
 from core.config import load_config
@@ -72,18 +72,20 @@ def generate_documentation(
     
     # ===== PHASE 1: SCANNING =====
     print(f"\n📁 PHASE 1: SCANNING PROJECT\n")
-    
+
     scan_result = scan_project_with_tree(project_path, ignore_dirs)
-    python_files = scan_result.all_files
+    found_files = scan_result.all_files
     project_tree = scan_result.get_tree_string()
-    
+
     print(f"  Project Structure:\n{project_tree}")
-    print(f"  ✓ Found {scan_result.total_files} Python files")
+    print(f"  ✓ Found {scan_result.total_files} supported files")
     print(f"  ✓ Total size: {scan_result.total_size_mb:.2f} MB")
     print(f"  ✓ Entry points: {scan_result.entry_points}")
-    
+    print(f"  ✓ Detected languages: {', '.join(scan_result.languages)}")
+    print(f"  ✓ Detected frameworks: {', '.join(scan_result.frameworks)}")
+
     if scan_result.total_files == 0:
-        print("\n  ⚠️ No Python files found. Nothing to document.")
+        print("\n  ⚠️ No supported files found. Nothing to document.")
         return
     
     # ===== PHASE 2: CHANGE DETECTION =====
@@ -93,14 +95,14 @@ def generate_documentation(
     
     if force:
         changes = ChangeReport(
-            added_files=python_files,
+            added_files=found_files,
             modified_files=[],
             deleted_files=[],
             unchanged_files=[]
         )
         print("  ⚠️  Force mode: Analyzing all files")
     else:
-        changes = detector.detect_changes(python_files)
+        changes = detector.detect_changes(found_files)
         print(changes.summary())
     
     if not changes.has_changes and not force:
@@ -110,11 +112,15 @@ def generate_documentation(
     # ===== PHASE 3: PARSING ALL FILES =====
     print(f"\n📝 PHASE 3: PARSING FILES\n")
     
-    parser = PythonParser(project_root=project_path)
+    factory = ParserFactory(project_root=project_path)
     all_parsed_files: Dict[str, ParsedFile] = {}
     parse_errors = 0
-    
-    for file_path in python_files:
+
+    for file_path in found_files:
+        parser = factory.get_parser(file_path)
+        if not parser:
+            # Unsupported extension – skip
+            continue
         try:
             parsed = parser.parse_file(file_path)
             if parsed:
@@ -209,7 +215,7 @@ def generate_documentation(
     print(f"  ✓ Total: {len(all_summaries)} summaries")
     
     if cached_count > 0:
-        savings = (cached_count / len(python_files)) * 100
+        savings = (cached_count / len(found_files)) * 100
         print(f"  💰 API Savings: ~{savings:.0f}% ({cached_count} files reused)")
     
     # ===== PHASE 5: PROJECT SYNTHESIS =====
@@ -217,8 +223,9 @@ def generate_documentation(
     
     project_analysis = analyzer.synthesize_project(
         list(all_summaries.values()),
-        project_path
-    )
+        project_path,
+        languages=scan_result.languages
+        )
     print(f"  ✓ Project synthesis complete")
     print(f"  ✓ Total tokens used: {analyzer.total_tokens_used}")
     
@@ -226,7 +233,7 @@ def generate_documentation(
     print(f"\n💾 PHASE 6: SAVING METADATA\n")
     
     detector.update_metadata(
-        python_files,
+        found_files,
         all_summaries,
         project_name
     )

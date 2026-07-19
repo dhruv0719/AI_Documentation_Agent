@@ -11,13 +11,33 @@ from analysis.llm_provider import BaseLLMProvider
 from models.config_models import LLMConfig
 
 
+_LANGUAGE_LABELS = {
+    "python": "Python",
+    "javascript": "JavaScript",
+    "typescript": "TypeScript",
+}
+
+
+def _language_label(parsed_file: ParsedFile) -> str:
+    """Human-readable language name for prompt text.
+
+    Previously this was hardcoded as "Python" everywhere, which told the LLM
+    it was looking at Python even when analyzing JS/TS files - producing
+    confused or wrong descriptions (e.g. calling arrow functions "lambdas",
+    or describing JSX/TS-specific patterns incorrectly).
+    """
+    lang = parsed_file.language
+    lang_value = lang.value if hasattr(lang, "value") else str(lang)
+    return _LANGUAGE_LABELS.get(lang_value, lang_value.capitalize() if lang_value else "source")
+
+
 class CodeAnalyzer:
     """
     Analyzes code using LLM to generate summaries and insights.
-    
+
     Supports both sync and async operation for flexibility.
     """
-    
+
     def __init__(
         self,
         provider: str = "groq",
@@ -25,15 +45,6 @@ class CodeAnalyzer:
         temperature: float = 0.2,
         max_tokens: int = 2500
     ):
-        """
-        Initialize analyzer.
-        
-        Args:
-            provider: LLM provider ("groq" or "openai")
-            api_key: API key (optional, reads from env)
-            temperature: LLM temperature
-            max_tokens: Max tokens per request
-        """
         self.llm: BaseLLMProvider = get_llm_provider(
             provider=provider,
             api_key=api_key,
@@ -44,109 +55,107 @@ class CodeAnalyzer:
 
     @classmethod
     def from_config(cls, llm_config: LLMConfig) -> 'CodeAnalyzer':
-        """Create analyzer from LLMConfig."""
         instance = cls.__new__(cls)
         instance.llm = get_llm_provider_from_config(llm_config)
         instance.total_tokens_used = 0
         return instance
-    
+
     # ============================================================
     # SYNC METHODS
     # ============================================================
-    
+
     def analyze_module(self, parsed_file: ParsedFile) -> ModuleSummary:
         """Analyze a single module synchronously."""
         model_size = self._select_model_size(parsed_file)
         model = self.llm.MODELS[model_size]
-        
+
         print(f"  Analyzing {parsed_file.file_path} [{model_size}]...")
-        
+
         prompt = self._build_module_prompt(parsed_file)
-        
+
         try:
             response = self.llm.generate_sync(prompt, model)
             self.total_tokens_used += response.tokens_used
             return self._parse_module_response(response.content, parsed_file)
-        
         except Exception as e:
             print(f"  ⚠ Error: {e}")
             return self._empty_summary(parsed_file)
-    
+
     def synthesize_project(
         self,
         module_summaries: List[ModuleSummary],
-        project_path: str
+        project_path: str,
+        languages: Optional[List[str]] = None
     ) -> ProjectAnalysis:
-        """Synthesize project-level understanding synchronously."""
+        """Synthesize project-level understanding synchronously.
+
+        Args:
+            module_summaries: Per-module summaries to synthesize.
+            project_path: Path to the project root.
+            languages: Distinct languages detected in the project (e.g. from
+                ScanResult.languages). Optional and backward-compatible -
+                when omitted, the prompt stays language-neutral rather than
+                assuming Python.
+        """
         print(f"\n  Synthesizing project overview...")
-        
-        prompt = self._build_synthesis_prompt(module_summaries, project_path)
-        
+
+        prompt = self._build_synthesis_prompt(module_summaries, project_path, languages)
+
         try:
             response = self.llm.generate_sync(prompt, self.llm.MODELS["large"])
             self.total_tokens_used += response.tokens_used
             return self._parse_synthesis_response(response.content)
-        
         except Exception as e:
             print(f"  ⚠ Error: {e}")
             return self._empty_project_analysis()
-    
+
     # ============================================================
     # ASYNC METHODS (Faster for batch processing)
     # ============================================================
-    
+
     async def analyze_module_async(self, parsed_file: ParsedFile) -> ModuleSummary:
         """Analyze a single module asynchronously."""
         model_size = self._select_model_size(parsed_file)
         model = self.llm.MODELS[model_size]
-        
+
         prompt = self._build_module_prompt(parsed_file)
-        
+
         try:
             response = await self.llm.generate(prompt, model)
             self.total_tokens_used += response.tokens_used
             return self._parse_module_response(response.content, parsed_file)
-        
         except Exception as e:
             print(f"  ⚠ Error analyzing {parsed_file.file_path}: {e}")
             return self._empty_summary(parsed_file)
-    
+
     async def analyze_modules_async(
         self,
         parsed_files: List[ParsedFile],
         max_concurrent: int = 5
     ) -> List[ModuleSummary]:
-        """
-        Analyze multiple modules concurrently.
-        
-        Args:
-            parsed_files: Files to analyze
-            max_concurrent: Max concurrent API calls (rate limit protection)
-            
-        Returns:
-            List of ModuleSummary in same order as input
-        """
         semaphore = asyncio.Semaphore(max_concurrent)
-        
+
         async def analyze_with_limit(pf: ParsedFile) -> ModuleSummary:
             async with semaphore:
                 return await self.analyze_module_async(pf)
-        
+
         tasks = [analyze_with_limit(pf) for pf in parsed_files]
         return await asyncio.gather(*tasks)
-    
+
     # ============================================================
     # PROMPT BUILDERS (Private)
     # ============================================================
-    
+
     def _build_module_prompt(self, parsed_file: ParsedFile) -> str:
         """Build prompt for module analysis."""
-        
+
+        language_label = _language_label(parsed_file)
+
         classes_info = ""
         for cls in parsed_file.classes:
             methods = [m.name for m in cls.methods]
             classes_info += f"  - {cls.name}: methods={methods}\n"
-        
+
         functions_info = ""
         for func in parsed_file.functions:
             params = func.params if isinstance(func.params, list) else []
@@ -155,16 +164,15 @@ class CodeAnalyzer:
             else:
                 param_str = ", ".join(str(p) for p in params)
             functions_info += f"  - {func.name}({param_str})\n"
-        
-        # Handle imports (could be ImportInfo or string)
+
         import_strs = []
         for imp in parsed_file.imports:
             if hasattr(imp, 'module'):
                 import_strs.append(imp.module)
             else:
                 import_strs.append(str(imp))
-        
-        prompt = f"""Analyze this Python module and respond with ONLY a JSON object.
+
+        prompt = f"""Analyze this {language_label} module and respond with ONLY a JSON object.
 
 FILE: {parsed_file.file_path}
 
@@ -186,16 +194,17 @@ Respond with this exact JSON format:
 }}
 
 ONLY output the JSON. No markdown, no explanation."""
-        
+
         return prompt
-    
+
     def _build_synthesis_prompt(
         self,
         module_summaries: List[ModuleSummary],
-        project_path: str
+        project_path: str,
+        languages: Optional[List[str]] = None
     ) -> str:
         """Build prompt for project synthesis."""
-        
+
         modules_info = "\n\n".join([
             f"**{s.file_path}**\n"
             f"  Purpose: {s.purpose}\n"
@@ -203,8 +212,18 @@ ONLY output the JSON. No markdown, no explanation."""
             f"  Components: {', '.join(s.key_components)}"
             for s in module_summaries
         ])
-        
-        prompt = f"""You are a senior software architect. Analyze this Python project.
+
+        if languages:
+            labels = [_LANGUAGE_LABELS.get(l, l.capitalize()) for l in languages]
+            if len(labels) == 1:
+                language_line = f"This is a {labels[0]} project."
+            else:
+                language_line = f"This project uses multiple languages: {', '.join(labels)}."
+        else:
+            language_line = ""
+
+        prompt = f"""You are a senior software architect. Analyze this software project.
+{language_line}
 
 PROJECT: {project_path}
 
@@ -221,31 +240,29 @@ Respond with this exact JSON format:
 }}
 
 ONLY output the JSON. No markdown, no explanation."""
-        
+
         return prompt
-    
+
     # ============================================================
     # RESPONSE PARSERS (Private)
     # ============================================================
-    
+
     def _parse_module_response(
         self,
         response: str,
         parsed_file: ParsedFile
     ) -> ModuleSummary:
-        """Parse LLM response into ModuleSummary."""
         try:
             cleaned = self._clean_llm_response(response)
             data = json.loads(cleaned)
-            
-            # Extract dependencies
+
             dependencies = []
             for imp in parsed_file.imports:
                 if hasattr(imp, 'module'):
                     dependencies.append(imp.module)
                 else:
                     dependencies.append(str(imp))
-            
+
             return ModuleSummary(
                 file_path=parsed_file.file_path,
                 purpose=data.get("purpose", "N/A"),
@@ -256,13 +273,12 @@ ONLY output the JSON. No markdown, no explanation."""
         except json.JSONDecodeError as e:
             print(f"    JSON parse error: {e}")
             return self._empty_summary(parsed_file)
-    
+
     def _parse_synthesis_response(self, response: str) -> ProjectAnalysis:
-        """Parse LLM response into ProjectAnalysis."""
         try:
             cleaned = self._clean_llm_response(response)
             data = json.loads(cleaned)
-            
+
             return ProjectAnalysis(
                 project_purpose=data.get("project_purpose", "N/A"),
                 architecture_overview=data.get("architecture_overview", "N/A"),
@@ -273,40 +289,36 @@ ONLY output the JSON. No markdown, no explanation."""
         except json.JSONDecodeError as e:
             print(f"    JSON parse error in synthesis: {e}")
             return self._empty_project_analysis()
-    
+
     def _clean_llm_response(self, response: str) -> str:
-        """Clean LLM response for JSON parsing."""
         cleaned = response.strip()
-        
-        # Remove <think>...</think> blocks
+
         if "<think>" in cleaned:
             cleaned = cleaned.split("</think>")[-1].strip()
-        
-        # Remove markdown code fences
+
         if cleaned.startswith("```json"):
             cleaned = cleaned[7:]
         if cleaned.startswith("```"):
             cleaned = cleaned[3:]
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
-        
+
         return cleaned.strip()
-    
+
     # ============================================================
     # HELPERS (Private)
     # ============================================================
-    
+
     def _select_model_size(self, parsed_file: ParsedFile) -> str:
-        """Select model size based on file complexity."""
         total = len(parsed_file.classes) + len(parsed_file.functions)
-        
+
         if total <= 3:
             return "small"
         elif total <= 10:
             return "medium"
         else:
             return "large"
-    
+
     def _empty_summary(self, parsed_file: ParsedFile) -> ModuleSummary:
         return ModuleSummary(
             file_path=parsed_file.file_path,
@@ -315,7 +327,7 @@ ONLY output the JSON. No markdown, no explanation."""
             key_components=[],
             dependencies=[]
         )
-    
+
     def _empty_project_analysis(self) -> ProjectAnalysis:
         return ProjectAnalysis(
             project_purpose="Analysis failed",

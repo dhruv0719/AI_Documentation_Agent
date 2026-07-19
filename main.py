@@ -3,7 +3,7 @@
 from typing import List
 from pathlib import Path
 from models.parsed_file import ParsedFile
-from parsers.python_parser import parse_file
+from parsers.parser_factory import ParserFactory
 from core.scanner import scan_project
 from analysis.analyzer import CodeAnalyzer
 from generation.generator import DocumentationGenerator
@@ -31,11 +31,11 @@ def generate_documentation(project_path: str, project_name: str = None):
     print("PHASE 1: SCANNING PROJECT")
     print(f"{'='*60}\n")
     
-    python_files = scan_project(
-        project_path, 
+    found_files = scan_project(
+        project_path,
         ignore_dirs=["venv", ".git", "node_modules", "__pycache__", ".venv", "dist", "build", ".pytest_cache", ".github"]
     )
-    print(f"✓ Found {len(python_files)} Python files\n")
+    print(f"✓ Found {len(found_files)} supported files\n")
     
     # ===== PHASE 2: PARSING =====
     print(f"{'='*60}")
@@ -45,11 +45,17 @@ def generate_documentation(project_path: str, project_name: str = None):
     parsed_files = []
     failed_files = []
     
-    for file_path in python_files:
-        parsed = parse_file(file_path, project_root=project_path)
-        if parsed:
-            parsed_files.append(parsed)
-        else:
+    factory = ParserFactory(project_root=project_path)
+    for file_path in found_files:
+        parser = factory.get_parser(file_path)
+        if not parser:
+            failed_files.append(file_path)
+            continue
+        try:
+            parsed = parser.parse_file(file_path)
+            if parsed:
+                parsed_files.append(parsed)
+        except Exception:
             failed_files.append(file_path)
     
     print(f"✓ Successfully parsed: {len(parsed_files)} files")

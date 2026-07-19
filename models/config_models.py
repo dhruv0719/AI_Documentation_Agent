@@ -16,8 +16,8 @@ class LLMConfig:
     max_tokens: int = 4096
 
     # LLM Models
-    small_model: str = "qwen/qwen3-32b"
-    medium_model: str = "openai/gpt-oss-20b"
+    small_model: str = "openai/gpt-oss-20b"
+    medium_model: str = "openai/gpt-oss-120b"
     large_model: str = "llama-3.3-70b-versatile"
     
     # Model for project synthesis (always needs the best)
@@ -54,21 +54,43 @@ class LLMConfig:
 class ScannerConfig:
     """Scanner configuration."""
     ignore_dirs: List[str] = field(default_factory=lambda: [
+        # Python
         "__pycache__",
-        ".git",
         ".venv",
         "venv",
         "env",
-        "node_modules",
-        ".idea",
-        ".vscode",
-        "dist",
-        "build",
         ".pytest_cache",
         ".mypy_cache",
+        ".ruff_cache",
+        ".tox",
+        "htmlcov",
+        "site-packages",
+        # JavaScript / TypeScript
+        "node_modules",
+        "dist",
+        "build",
+        "out",
+        "coverage",
+        ".next",
+        ".nuxt",
+        ".turbo",
+        ".parcel-cache",
+        ".svelte-kit",
+        ".expo",
+        ".angular",
+        ".vercel",
+        ".cache",
+        ".turbo",
+        "tmp",
+        # Editor / VCS
+        ".git",
+        ".idea",
+        ".vscode",
     ])
     
-    include_extensions: List[str] = field(default_factory=lambda: [".py"])
+    include_extensions: List[str] = field(default_factory=lambda: [
+        ".py", ".js", ".jsx", ".ts", ".tsx"
+    ])
     max_file_size_bytes: int = 100_000  # Skip files larger than 100KB
 
 @dataclass
