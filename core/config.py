@@ -97,15 +97,17 @@ class ConfigManager:
             api_key=api_key,
             temperature=temperature,
             max_tokens=max_tokens,
-            small_model=llm_data.get("small_model", "qwen/qwen3-32b"),
-            medium_model=llm_data.get("medium_model", "openai/gpt-oss-20b"),
+            small_model=llm_data.get("small_model", "openai/gpt-oss-20b"),
+            medium_model=llm_data.get("medium_model", "openai/gpt-oss-120b"),
             large_model=llm_data.get("large_model", "llama-3.3-70b-versatile"),
             synthesis_model=llm_data.get("synthesis_model", "llama-3.3-70b-versatile"),
         )
 
         # ---- Scanner Config ----
         ignore_dirs = scanner_data.get("ignore_dirs", ScannerConfig().ignore_dirs)
-        include_ext = scanner_data.get("include_extensions", [".py"])
+        include_ext = scanner_data.get(
+            "include_extensions", [".py", ".js", ".jsx", ".ts", ".tsx"]
+        )
         if any(not ext.startswith('.') for ext in include_ext):
             raise ValueError("All include_extensions must start with '.'")
         max_file_size = scanner_data.get("max_file_size_bytes", 100_000)
