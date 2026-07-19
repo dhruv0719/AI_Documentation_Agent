@@ -14,8 +14,8 @@ class GroqProvider(BaseLLMProvider):
 
     # Model mappings
     MODELS = {
-        "small": "qwen/qwen3-32b",
-        "medium": "openai/gpt-oss-20b",
+        "small": "openai/gpt-oss-20b",
+        "medium": "openai/gpt-oss-120b",
         "large": "llama-3.3-70b-versatile",
     }
     def __init__(self, api_key: Optional[str] = None, temperature: float = 0.2, max_tokens: int = 2500):
