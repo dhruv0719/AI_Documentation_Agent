@@ -32,6 +32,7 @@ class FunctionInfo:
     is_async: bool = False
     is_private: bool = False  # starts with _
     is_method: bool = False
+    is_exported: bool = False  # Not private or internal
     line_number: int = 0
 
     @property
@@ -54,6 +55,7 @@ class ClassInfo:
     base_classes: List[str] = field(default_factory=list)  # NEW
     decorators: List[str] = field(default_factory=list)    # NEW
     class_variables: List[str] = field(default_factory=list)  # NEW
+    is_exported: bool = False
     line_number: int = 0
 
     @property
@@ -88,6 +90,7 @@ class ParsedFile:
     line_count: int = 0
     has_entry_point: bool = False
     language: SourceLanguage = SourceLanguage.PYTHON
+    exports: List['ExportInfo'] = field(default_factory=list)  # NEW
 
     @property
     def has_content(self) -> bool:
@@ -137,3 +140,10 @@ class ProjectAnalysis:
     entry_points: List[str]
     module_relationships: str  # How modules connect
     design_patterns: List[str]
+
+@dataclass
+class ExportInfo:
+    name: str
+    kind: str  # "function", "class", "const", "interface", "type", "enum", "default"
+    source_file: Optional[str] = None  # File where this export is defined
+    line_number: Optional[int] = None  # Line number in source file
