@@ -99,8 +99,8 @@ class ConfigManager:
             max_tokens=max_tokens,
             small_model=llm_data.get("small_model", "openai/gpt-oss-20b"),
             medium_model=llm_data.get("medium_model", "openai/gpt-oss-120b"),
-            large_model=llm_data.get("large_model", "llama-3.3-70b-versatile"),
-            synthesis_model=llm_data.get("synthesis_model", "llama-3.3-70b-versatile"),
+            large_model=llm_data.get("large_model", "openai/gpt-oss-120b"),
+            synthesis_model=llm_data.get("synthesis_model", "openai/gpt-oss-120b"),
         )
 
         # ---- Scanner Config ----
