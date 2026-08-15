@@ -24,6 +24,7 @@ from models.parsed_file import (
     ClassInfo,
     FunctionInfo,
     ParameterInfo,
+    ExportInfo
 )
 from models.language import SourceLanguage
 
@@ -219,7 +220,7 @@ class JavaScriptParser(BaseParser):
 
     def _extract_classes(self, root, source: bytes) -> List[ClassInfo]:
         classes: List[ClassInfo] = []
-        for node in root.children:
+        for node, is_exported in self._iter_top_level_declarations(root):
             if node.type == "class_declaration":
                 name_node = node.child_by_field_name("name")
                 class_name = _node_text(name_node, source) if name_node else "<anonymous>"
@@ -230,13 +231,14 @@ class JavaScriptParser(BaseParser):
                     base_classes=_get_base_classes(node, source),
                     decorators=[],
                     class_variables=[],
+                    is_exported=is_exported,
                     line_number=node.start_point[0] + 1,
                 ))
         return classes
 
     def _extract_functions(self, root, source: bytes) -> List[FunctionInfo]:
         functions: List[FunctionInfo] = []
-        for node in root.children:
+        for node, is_exported in self._iter_top_level_declarations(root):
             if node.type == "function_declaration":
                 name_node = node.child_by_field_name("name")
                 func_name = _node_text(name_node, source) if name_node else "<anonymous>"
@@ -249,6 +251,7 @@ class JavaScriptParser(BaseParser):
                     decorators=[],
                     is_async=_is_async(node),
                     is_private=func_name.startswith("_"),
+                    is_exported=is_exported,
                     line_number=node.start_point[0] + 1,
                 ))
 
@@ -271,6 +274,7 @@ class JavaScriptParser(BaseParser):
                             decorators=[],
                             is_async=_is_async(init_node),
                             is_private=func_name.startswith("_"),
+                            is_exported=is_exported,
                             line_number=declarator.start_point[0] + 1,
                         ))
         return functions
@@ -290,6 +294,107 @@ class JavaScriptParser(BaseParser):
         if root.type == "ERROR" or root.has_error:
             return True
         return False
+
+    def _iter_top_level_declarations(self, root):
+        """
+        Yield (node, is_exported) for top-level declarations,
+        including those wrapped in export_statement.
+        """
+        for child in root.children:
+            if child.type == "export_statement":
+                decl = child.child_by_field_name("declaration")
+                if decl:
+                    yield decl, True
+                    continue
+
+                value = child.child_by_field_name("value")
+                if value:
+                    yield value, True
+                    continue
+
+            else:
+                yield child, False
+
+    def _extract_exports(self, root, source: bytes) -> List[ExportInfo]:
+        exports = []
+        for child in root.children:
+            if child.type != "export_statement":
+                continue
+
+            # Handle `export class/function/const/let/var ...`
+            declaration = child.child_by_field_name("declaration")
+            if declaration:
+                kind = declaration.type
+                name = None
+
+                if declaration.type == "class_declaration":
+                    name_node = declaration.child_by_field_name("name")
+                    name = _node_text(name_node, source) if name_node else "<anonymous>"
+                elif declaration.type == "function_declaration":
+                    name_node = declaration.child_by_field_name("name")
+                    name = _node_text(name_node, source) if name_node else "<anonymous>"
+                elif declaration.type in ("lexical_declaration", "variable_declaration"):
+                    declarator = next(
+                        (d for d in declaration.named_children if d.type == "variable_declarator"),
+                        None
+                    )
+                    if declarator:
+                        name_node = declarator.child_by_field_name("name")
+                        name = _node_text(name_node, source) if name_node else "<anonymous>"
+                if name:
+                    exports.append(ExportInfo(
+                        name=name,
+                        kind=kind,
+                        line_number=child.start_point[0] + 1,
+                    ))
+                continue
+
+            # Handle `export { foo, bar as baz }`
+            export_clause = child.child_by_field_name("export_clause")
+            if export_clause:
+                for spec in export_clause.named_children:
+                    if spec.type == "export_specifier":
+                        name_node = spec.child_by_field_name("name")
+                        alias_node = spec.child_by_field_name("alias")
+                        name = _node_text(name_node, source) if name_node else "<anonymous>"
+                        alias = _node_text(alias_node, source) if alias_node else None
+                        exports.append(ExportInfo(
+                            name=name,
+                            kind="named",
+                            source=None,
+                            line_number=spec.start_point[0] + 1,
+                        ))
+                continue
+
+            # Handle `export * from './mod'` or `export { foo } from './mod'`
+            source_node = child.child_by_field_name("source")
+            if source_node:
+                module_name = _node_text(source_node, source).strip("\"'")
+                exports.append(ExportInfo(
+                    name="*",
+                    kind="reexport",
+                    source=module_name,
+                    line_number=child.start_point[0] + 1,
+                ))
+                continue
+
+            # Handle default export: `export default function/class/expression`
+            value = child.child_by_field_name("value")
+            if value:
+                name = None
+                if value.type in ("class_declaration", "function_declaration"):
+                    name_node = value.child_by_field_name("name")
+                    name = _node_text(name_node, source) if name_node else "<anonymous>"
+                else:
+                    name = _node_text(value, source)
+                exports.append(ExportInfo(
+                    name=name,
+                    kind="default",
+                    line_number=child.start_point[0] + 1,
+                ))
+
+        return exports
+
 
     # ---------------------------------------------------------------------
     # Public API
@@ -320,6 +425,7 @@ class JavaScriptParser(BaseParser):
         functions = self._extract_functions(root, source)
         line_count = source.count(b"\n") + 1
         has_entry = self._detect_entry_point(root, source)
+        exports = self._extract_exports(root, source)
 
         return ParsedFile(
             file_path=file_path,
@@ -331,6 +437,7 @@ class JavaScriptParser(BaseParser):
             line_count=line_count,
             has_entry_point=has_entry,
             language=SourceLanguage.JAVASCRIPT,
+            exports=exports,
         )
 
     def parse_files(self, file_paths: List[str]) -> List[ParsedFile]:
