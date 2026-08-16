@@ -90,12 +90,15 @@ class ParsedFile:
     line_count: int = 0
     has_entry_point: bool = False
     language: SourceLanguage = SourceLanguage.PYTHON
+    interfaces: List['InterfaceInfo'] = field(default_factory=list)
+    type_aliases: List['TypeAliasInfo'] = field(default_factory=list)
+    enums: List['EnumInfo'] = field(default_factory=list)
     exports: List['ExportInfo'] = field(default_factory=list)  # NEW
 
     @property
     def has_content(self) -> bool:
         """Check if file has meaningful content to document."""
-        return bool(self.classes or self.functions)
+        return bool(self.classes or self.functions or self.interfaces or self.type_aliases or self.enums)
     
     @property
     def module_name(self) -> str:
@@ -147,3 +150,31 @@ class ExportInfo:
     kind: str  # "function", "class", "const", "interface", "type", "enum", "default"
     source_file: Optional[str] = None  # File where this export is defined
     line_number: Optional[int] = None  # Line number in source file
+
+@dataclass
+class PropertyInfo:
+    name: str
+    type_hint: Optional[str] = None
+    visibility: Optional[str] = None        # "public", "private", "protected"
+    is_static: bool = False
+    is_readonly: bool = False
+    has_default: bool = False
+
+@dataclass
+class InterfaceInfo:
+    name: str
+    properties: List[PropertyInfo] = field(default_factory=list)
+    extends: List[str] = field(default_factory=list)
+    line_number: int = 0
+
+@dataclass
+class TypeAliasInfo:
+    name: str
+    type_text: str
+    line_number: int = 0
+
+@dataclass
+class EnumInfo:
+    name: str
+    members: List[str] = field(default_factory=list)
+    line_number: int = 0
