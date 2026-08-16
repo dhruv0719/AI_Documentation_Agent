@@ -26,6 +26,10 @@ from tree_sitter_typescript import language_typescript, language_tsx
 
 from parsers.base_parser import BaseParser
 from models.parsed_file import (
+    InterfaceInfo,
+    PropertyInfo,
+    EnumInfo,
+    TypeAliasInfo,
     ParsedFile,
     ImportInfo,
     ClassInfo,
@@ -409,6 +413,73 @@ class TypeScriptParser(BaseParser):
 
         return exports
 
+    def _extract_interfaces(self, root, source: bytes) -> List[InterfaceInfo]:
+        interfaces: List[InterfaceInfo] = []
+        for node, is_exported in self._iter_top_level_declarations(root):
+            if node.type == "interface_declaration":
+                name_node = node.child_by_field_name("name")
+                interface_name = _node_text(name_node, source) if name_node else "<anonymous>"
+                properties: List[PropertyInfo] = []
+                extends: List[str] = []
+
+                heritage_node = node.child_by_field_name("heritage")
+                if heritage_node:
+                    for ext in heritage_node.named_children:
+                        if ext.type == "extends_clause":
+                            value_node = ext.child_by_field_name("value")
+                            if value_node:
+                                extends.append(_node_text(value_node, source))
+
+                body_node = node.child_by_field_name("body")
+                if body_node:
+                    for member in body_node.named_children:
+                        if member.type == "property_signature":
+                            prop_name_node = member.child_by_field_name("name")
+                            type_node = member.child_by_field_name("type")
+                            prop_name = _node_text(prop_name_node, source) if prop_name_node else "<anonymous>"
+                            type_hint = _node_text(type_node, source) if type_node else None
+                            properties.append(PropertyInfo(
+                                name=prop_name,
+                                type_hint=type_hint,
+                                visibility=None,
+                                is_static=False,
+                                is_readonly=False,
+                                has_default=False
+                            ))
+
+                interfaces.append(InterfaceInfo(
+                    name=interface_name,
+                    properties=properties,
+                    extends=extends,
+                    line_number=node.start_point[0] + 1
+                ))
+        return interfaces
+
+    def _extract_type_aliases(self, root, source: bytes) -> List[TypeAliasInfo]:
+        type_aliases: List[TypeAliasInfo] = []
+        for node, is_exported in self._iter_top_level_declarations(root):
+            if node.type == "type_alias_declaration":
+                name_node = node.child_by_field_name("name")
+                type_node = node.child_by_field_name("type")
+                alias_name = _node_text(name_node, source) if name_node else "<anonymous>"
+                type_text = _node_text(type_node, source) if type_node else ""
+                type_aliases.append(TypeAliasInfo(
+                    name=alias_name,
+                    type_text=type_text,
+                    line_number=node.start_point[0] + 1
+                ))
+        return type_aliases
+
+    def _extract_enums(self, root, source: bytes) -> List[EnumInfo]:
+        enums: List[EnumInfo] = []
+        for node, is_exported in self._iter_top_level_declarations(root):
+            if node.type == "enum_declaration":
+                name_node = node.child_by_field_name("name")
+                enum_name = _node_text(name_node, source) if name_node else "<anonymous>"
+                enums.append(EnumInfo(
+                    name=enum_name
+                ))
+        return enums
 
     # ---------------------------------------------------------------------
     # Public API
@@ -438,6 +509,9 @@ class TypeScriptParser(BaseParser):
         imports = self._extract_imports(root, source)
         classes = self._extract_classes(root, source)
         functions = self._extract_functions(root, source)
+        interfaces = self._extract_interfaces(root, source)
+        type_aliases = self._extract_type_aliases(root, source)
+        enums = self._extract_enums(root, source)
         line_count = source.count(b"\n") + 1
         has_entry = self._detect_entry_point(root, source)
         exports = self._extract_exports(root, source)
@@ -453,6 +527,9 @@ class TypeScriptParser(BaseParser):
             has_entry_point=has_entry,
             exports=exports,
             language=SourceLanguage.TYPESCRIPT,
+            interfaces=interfaces,
+            type_aliases=type_aliases,
+            enums=enums,
         )
 
     def parse_files(self, file_paths: List[str]) -> List[ParsedFile]:
