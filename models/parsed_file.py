@@ -34,6 +34,7 @@ class FunctionInfo:
     is_method: bool = False
     is_exported: bool = False  # Not private or internal
     line_number: int = 0
+    body: Optional[str] = None 
 
     @property
     def signature(self) -> str:
