@@ -171,6 +171,21 @@ class TypeScriptParser(BaseParser):
         for node in root.children:
             if node.type == "import_statement":
                 module_node = node.child_by_field_name("source")
+                import_clause = node.child_by_field_name("import_clause")
+                names = []
+                if import_clause:
+                    for child in import_clause.named_children:
+                        if child.type == "named_imports":
+                            for spec in child.named_children:
+                                if spec.type == "import_specifier":
+                                    name_node = spec.child_by_field_name("name")
+                                    if name_node:
+                                        names.append(_node_text(name_node, source))
+                        elif child.type == "namespace_import":
+                            name_node = child.child_by_field_name("name")
+                            if name_node:
+                                names.append(_node_text(name_node, source))
+                imports.append(ImportInfo(module=module_name, names=names, is_from_import=True))
                 if module_node:
                     module_name = _node_text(module_node, source).strip("\"'")
                     imports.append(ImportInfo(module=module_name, is_from_import=True))
@@ -211,10 +226,15 @@ class TypeScriptParser(BaseParser):
                 name_node = child.child_by_field_name("name")
                 method_name = _node_text(name_node, source) if name_node else "<anonymous>"
                 params_node = child.child_by_field_name("parameters")
+                return_type = child.child_by_field_name("return_type")
+                returns = _node_text(return_type, source=source).strip() if return_type else None
+                body_node = child.child_by_field_name("body")
+                body_text = _node_text(body_node, source) if body_node else None
                 methods.append(FunctionInfo(
                     name=method_name,
                     params=_extract_params(params_node, source),
-                    returns=None,
+                    returns=returns,
+                    body=body_text,
                     docstring=_attach_leading_docstring(child, source),
                     decorators=[],
                     is_async=_is_async(child),
@@ -232,7 +252,7 @@ class TypeScriptParser(BaseParser):
                     methods.append(FunctionInfo(
                         name=field_name,
                         params=_extract_params(params_node, source),
-                        returns=None,
+                        returns=returns,
                         docstring=_attach_leading_docstring(child, source),
                         decorators=[],
                         is_async=_is_async(value_node),
@@ -266,10 +286,15 @@ class TypeScriptParser(BaseParser):
                 name_node = node.child_by_field_name("name")
                 func_name = _node_text(name_node, source) if name_node else "<anonymous>"
                 params_node = node.child_by_field_name("parameters")
+                return_type = node.child_by_field_name("return_type")
+                returns = _node_text(return_type, source=source).strip() if return_type else None
+                node_body = node.child_by_field_name("body")
+                body_text = _node_text(node_body, source) if node_body else None
                 functions.append(FunctionInfo(
                     name=func_name,
                     params=_extract_params(params_node, source),
-                    returns=None,
+                    returns=returns,
+                    body=body_text,
                     docstring=_attach_leading_docstring(node, source),
                     decorators=[],
                     is_async=_is_async(node),
@@ -289,10 +314,12 @@ class TypeScriptParser(BaseParser):
                     if init_node.type in ("arrow_function", "function"):
                         func_name = _node_text(name_node, source)
                         params_node = init_node.child_by_field_name("parameters")
+                        body_text = _node_text(init_node.child_by_field_name("body"), source) if init_node.child_by_field_name("body") else None
                         functions.append(FunctionInfo(
                             name=func_name,
                             params=_extract_params(params_node, source),
-                            returns=None,
+                            returns=returns,
+                            body=body_text,
                             docstring=_attach_leading_docstring(node, source),
                             decorators=[],
                             is_async=_is_async(init_node),
